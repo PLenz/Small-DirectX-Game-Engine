@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2010
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DXGE", "DXGE.vcxproj", "{4696F565-F787-41C5-AFB0-8072EFE88908}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|32bit = Debug|32bit
+		Debug|64bit = Debug|64bit
+		Release|32bit = Release|32bit
+		Release|64bit = Release|64bit
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Debug|32bit.ActiveCfg = Debug|Win32
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Debug|32bit.Build.0 = Debug|Win32
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Debug|64bit.ActiveCfg = Debug|x64
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Debug|64bit.Build.0 = Debug|x64
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Release|32bit.ActiveCfg = Release|Win32
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Release|32bit.Build.0 = Release|Win32
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Release|64bit.ActiveCfg = Release|x64
+		{4696F565-F787-41C5-AFB0-8072EFE88908}.Release|64bit.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {88089048-F6BE-4526-B913-92B961EAB1BC}
+	EndGlobalSection
+EndGlobal
