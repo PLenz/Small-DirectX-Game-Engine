@@ -52,4 +52,7 @@ This is a DirectX application with some basic Game engine features.
 - Small Benchmark on startup
 
 ## Screenshots
-![Alt text](screenshots/DXGE.png?raw=true "DXGE")
+![DXGE](screenshots/DXGE.png?raw=true "DXGE")
+
+## Renderer
+![Renderer](screenshots/Renderer.PNG?raw=true "Renderer")
