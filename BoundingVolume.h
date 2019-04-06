@@ -13,38 +13,40 @@
 #include <limits>
 
 
-class BoundingVolume
-{
+class BoundingVolume {
 public:
-	BoundingVolume(float radius);
-	BoundingVolume(std::vector<Vertex> &vertices, std::vector<DWORD> &indices);
-	BoundingVolume(std::vector<Vertex> &vertices);
-    ~BoundingVolume() {};
+  BoundingVolume(float radius);
+  BoundingVolume(std::vector<Vertex>& vertices, std::vector<DWORD>& indices);
+  BoundingVolume(std::vector<Vertex>& vertices);
 
-	bool CullAlongAxes(BoundingVolume* other);
-	bool CullExactly(BoundingVolume* other);
-    bool IntersectsAlongAxes(BoundingVolume* other, XMFLOAT3 &resolution);
-	bool IntersectsExactly(BoundingVolume* other, XMFLOAT3 &resolution);
-	bool Update(XMFLOAT3* position, XMFLOAT4* rotation );
+
+  ~BoundingVolume() {};
+
+
+  bool CullAlongAxes(BoundingVolume* other);
+  bool CullExactly(BoundingVolume* other);
+  bool IntersectsAlongAxes(BoundingVolume* other, XMFLOAT3& resolution);
+  bool IntersectsExactly(BoundingVolume* other, XMFLOAT3& resolution);
+  bool Update(XMFLOAT3* position, XMFLOAT4* rotation);
 
 protected:
-	void getVertices(std::vector<XMFLOAT3>& vertices);
-	void setNormals();
-	void setOffsets();
-	void getEdges(std::vector<XMFLOAT3>& edges);
+  void getVertices(std::vector<XMFLOAT3>& vertices);
+  void setNormals();
+  void setOffsets();
+  void getEdges(std::vector<XMFLOAT3>& edges);
 
 private:
-	int m_type;
-	XMFLOAT3 m_min;
-	XMFLOAT3 m_max;
-    std::vector<XMFLOAT3> m_vertices;
-	std::vector<DWORD> m_indices;
-	XMFLOAT3 m_rotatedVertices[8];
-	float m_radius;
-	XMFLOAT4 m_rotation = { FLT_MAX, FLT_MAX ,FLT_MAX ,FLT_MAX };
-	XMFLOAT3 m_position = { FLT_MAX, FLT_MAX ,FLT_MAX  };
-	XMFLOAT3 m_bounding_min;
-	XMFLOAT3 m_bounding_max;
-	std::vector<XMFLOAT3> m_normals;
-	std::vector<float> m_offsets;
+  int m_type;
+  XMFLOAT3 m_min;
+  XMFLOAT3 m_max;
+  std::vector<XMFLOAT3> m_vertices;
+  std::vector<DWORD> m_indices;
+  XMFLOAT3 m_rotatedVertices[8];
+  float m_radius;
+  XMFLOAT4 m_rotation = {FLT_MAX, FLT_MAX,FLT_MAX,FLT_MAX};
+  XMFLOAT3 m_position = {FLT_MAX, FLT_MAX,FLT_MAX};
+  XMFLOAT3 m_bounding_min;
+  XMFLOAT3 m_bounding_max;
+  std::vector<XMFLOAT3> m_normals;
+  std::vector<float> m_offsets;
 };

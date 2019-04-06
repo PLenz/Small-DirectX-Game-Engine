@@ -6,12 +6,13 @@
 
 using namespace std;
 
-class LevelLoader
-{
+class LevelLoader {
 public:
-    static vector<vector<int>> Load(string filename);
+  static vector<vector<int>> Load(string filename);
 
 private:
-    LevelLoader() {};
-    ~LevelLoader() {};
+  LevelLoader() {};
+
+
+  ~LevelLoader() {};
 };
