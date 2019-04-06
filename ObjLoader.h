@@ -10,11 +10,11 @@ class ObjLoader {
 public:
   static void Load(
     string filename,
-    Vertex* & outVertices,
-    int& vcount,
-    DWORD* & outIndices,
-    int& icount,
-    BoundingVolume* & boundingBox);
+    Vertex* & vertices_out,
+    int& vertices_count_out,
+    DWORD* & indices_out,
+    int& indices_count_out,
+    BoundingVolume* & bounding_volume_out);
 
 private:
   static vector<int> split(string);

@@ -3,9 +3,9 @@
 #include "Camera.h"
 #include "Keyboard.h"
 
-Renderer* Camera::m_renderer;
-BoundingVolume Camera::m_boundingCamera = BoundingVolume(0.15f); // Radius = 0.15 -> Breite = 0.3
-BoundingVolume* Camera::m_boundingFrustum;
+Renderer* Camera::p_renderer_;
+BoundingVolume Camera::m_bounding_camera_ = BoundingVolume(0.15f); // Radius = 0.15 -> Breite = 0.3
+BoundingVolume* Camera::m_bounding_frustum_;
 
 // X,Y,Z Coordinates to set the direction we are looking at. Always Z-1 from m_cameraPosition Z
 const XMFLOAT3 c_forwardVector = {0.0f, 0.0f, -1.0f};
@@ -62,7 +62,7 @@ float Camera::GetYaw() {
 
 
 void Camera::Setup(Renderer* renderer) {
-  m_renderer = renderer;
+  p_renderer_ = renderer;
 }
 
 
@@ -89,8 +89,8 @@ XMFLOAT4X4 Camera::GetProjectionMatrix() {
 }
 
 
-void Camera::getFrustum(BoundingVolume*& bv) {
-  if (m_boundingFrustum == nullptr) {
+void Camera::GetFrustum(BoundingVolume*& bounding_volume) {
+  if (m_bounding_frustum_ == nullptr) {
     float nearHeight = 2 * tan(c_fovAngleY) * c_nearZ;
     float farHeight = 2 * tan(c_fovAngleY) * c_farZ;
     float nearWidth = nearHeight * aspectRatio;
@@ -115,9 +115,9 @@ void Camera::getFrustum(BoundingVolume*& bv) {
     //left up back
     frustumModel.push_back(Vertex({XMFLOAT3(-farWidth / 2, farHeight / 2, -c_farZ), {0, 0, 0, 0}, {0, 0}}));
 
-    m_boundingFrustum = new BoundingVolume(frustumModel);
+    m_bounding_frustum_ = new BoundingVolume(frustumModel);
   }
-  bv = m_boundingFrustum;
+  bounding_volume = m_bounding_frustum_;
 }
 
 
@@ -171,9 +171,9 @@ void Camera::Update(float delta) {
   XMStoreFloat3(&desiredPosition, XMLoadFloat3(&m_cameraPosition) + rotatedDirection);
   XMFLOAT4 desiredRotation;
   XMStoreFloat4(&desiredRotation, quaternionRotation);
-  m_boundingCamera.Update(&desiredPosition, &desiredRotation);
+  m_bounding_camera_.Update(&desiredPosition, &desiredRotation);
 
-  if (m_renderer->Intersects(m_boundingCamera, resolution)) {
+  if (p_renderer_->Intersects(m_bounding_camera_, resolution)) {
     rotatedDirection -= XMLoadFloat3(&resolution);
   }
 

@@ -1,65 +1,65 @@
 ﻿#include "stdafx.h"
 #include "MeshCache.h"
 
-std::map<std::wstring, MeshCacheObj*> MeshCache::m_meshTable;
-ID3D12Device* MeshCache::p_device = nullptr;
+std::map<std::wstring, MeshCacheObj*> MeshCache::m_mesh_table_;
+ID3D12Device* MeshCache::p_device_ = nullptr;
 
 
-bool MeshCache::GetMesh(std::wstring objPath, std::wstring pngPath, Mesh*& outMesh) {
-  const std::wstring full = objPath + pngPath;
-  if (m_meshTable.find(full) == m_meshTable.end()) {
-    Mesh* mesh = new Mesh(objPath, pngPath);
+bool MeshCache::GetMesh(std::wstring obj_path, std::wstring png_path, Mesh*& out_mesh) {
+  const std::wstring full = obj_path + png_path;
+  if (m_mesh_table_.find(full) == m_mesh_table_.end()) {
+    Mesh* mesh = new Mesh(obj_path, png_path);
 
     MeshCacheObj* obj = new MeshCacheObj();
     obj->mesh = mesh;
-    obj->refCounter++;
+    obj->ref_counter++;
 
-    m_meshTable[full] = obj;
-    outMesh = m_meshTable[full]->mesh;
+    m_mesh_table_[full] = obj;
+    out_mesh = m_mesh_table_[full]->mesh;
   } else {
-    if (m_meshTable[full]->mesh == nullptr) {
-      Mesh* mesh = new Mesh(objPath, pngPath);
-      m_meshTable[full]->mesh = mesh;
+    if (m_mesh_table_[full]->mesh == nullptr) {
+      Mesh* mesh = new Mesh(obj_path, png_path);
+      m_mesh_table_[full]->mesh = mesh;
     }
-    m_meshTable[full]->refCounter++;
-    outMesh = m_meshTable[full]->mesh;
+    m_mesh_table_[full]->ref_counter++;
+    out_mesh = m_mesh_table_[full]->mesh;
   }
 
   return true;
 }
 
 
-void MeshCache::Release(std::wstring objPath, std::wstring pngPath) {
-  m_meshTable.clear();
+void MeshCache::Release(std::wstring obj_path, std::wstring png_path) {
+  m_mesh_table_.clear();
 }
 
 
-void MeshCache::Unload(std::wstring objPath, std::wstring pngPath) {
-  const std::wstring full = objPath + pngPath;
-  if (!(m_meshTable.find(full) == m_meshTable.end())) {
-    m_meshTable[full]->refCounter--;
-    if (m_meshTable[full]->refCounter == 0) {
-      m_meshTable[full]->mesh->Release();
-      m_meshTable[full]->mesh = nullptr;
+void MeshCache::Unload(std::wstring obj_path, std::wstring png_path) {
+  const std::wstring full = obj_path + png_path;
+  if (!(m_mesh_table_.find(full) == m_mesh_table_.end())) {
+    m_mesh_table_[full]->ref_counter--;
+    if (m_mesh_table_[full]->ref_counter == 0) {
+      m_mesh_table_[full]->mesh->Release();
+      m_mesh_table_[full]->mesh = nullptr;
     }
   }
 }
 
 
-void MeshCache::SetBoundingVolume(std::wstring objPath, std::wstring pngPath) {
-  const std::wstring full = objPath + pngPath;
-  if (!(m_meshTable.find(full) == m_meshTable.end())) {
-    if (m_meshTable[full]->boundingVolume == nullptr) {
-      m_meshTable[full]->boundingVolume = new BoundingVolume(*(m_meshTable[full]->mesh->GetBoundingVolume()));
+void MeshCache::SetBoundingVolume(std::wstring obj_path, std::wstring png_path) {
+  const std::wstring full = obj_path + png_path;
+  if (!(m_mesh_table_.find(full) == m_mesh_table_.end())) {
+    if (m_mesh_table_[full]->bounding_volume == nullptr) {
+      m_mesh_table_[full]->bounding_volume = new BoundingVolume(*(m_mesh_table_[full]->mesh->GetBoundingVolume()));
     }
   }
 }
 
 
-BoundingVolume* MeshCache::GetBoundingVolume(std::wstring objPath, std::wstring pngPath) {
-  const std::wstring full = objPath + pngPath;
-  if (!(m_meshTable.find(full) == m_meshTable.end())) {
-    return m_meshTable[full]->boundingVolume;
+BoundingVolume* MeshCache::GetBoundingVolume(std::wstring obj_path, std::wstring png_path) {
+  const std::wstring full = obj_path + png_path;
+  if (!(m_mesh_table_.find(full) == m_mesh_table_.end())) {
+    return m_mesh_table_[full]->bounding_volume;
   }
 
   return nullptr;
@@ -67,26 +67,26 @@ BoundingVolume* MeshCache::GetBoundingVolume(std::wstring objPath, std::wstring 
 
 
 int MeshCache::GetMeshTableSize() {
-  return m_meshTable.size();
+  return m_mesh_table_.size();
 }
 
 
 void MeshCache::SetDevice(ComPtr<ID3D12Device>& device) {
-  if (p_device == nullptr) {
-    p_device = device.Get();
+  if (p_device_ == nullptr) {
+    p_device_ = device.Get();
   }
 }
 
 
-boolean MeshCache::IsReleased(std::wstring objPath, std::wstring pngPath) {
-  const std::wstring full = objPath + pngPath;
-  if (!(m_meshTable.find(full) == m_meshTable.end())) {
-    return m_meshTable[full]->refCounter == 0;
+boolean MeshCache::IsReleased(std::wstring obj_path, std::wstring png_path) {
+  const std::wstring full = obj_path + png_path;
+  if (!(m_mesh_table_.find(full) == m_mesh_table_.end())) {
+    return m_mesh_table_[full]->ref_counter == 0;
   }
   return true;
 }
 
 
 ComPtr<ID3D12Device> MeshCache::GetDevice() {
-  return ComPtr<ID3D12Device>(p_device);
+  return ComPtr<ID3D12Device>(p_device_);
 }

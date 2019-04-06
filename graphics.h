@@ -1,6 +1,6 @@
 #pragma once
 #include "stdafx.h"
-#include "renderer.h"
+#include "Renderer.h"
 
 class Graphics {
 public:
@@ -10,35 +10,35 @@ public:
   ~Graphics() {};
 
 
-  bool Init(HWND, int windowWidth, int windowHeight, int vertCount, Renderer* r);
+  bool Init(HWND, int window_width, int window_height, int vert_count, Renderer* renderer);
   bool Render(double delta);
   void Release();
 
 
   Renderer GetRenderer() {
-    return *m_renderer;
+    return *p_renderer_;
   };
 
 
 private:
   bool Sync();
 
-  bool m_loaded = false;
-  ComPtr<ID3D12Device> m_device;
-  ComPtr<IDXGISwapChain3> m_swapChain;
-  ComPtr<ID3D12Resource> m_renderTargets[DXGE_FRAME_COUNT];
+  bool m_loaded_ = false;
+  ComPtr<ID3D12Device> m_device_;
+  ComPtr<IDXGISwapChain3> m_swap_chain_;
+  ComPtr<ID3D12Resource> m_render_targets_[DXGE_FRAME_COUNT];
 
-  ComPtr<ID3D12CommandQueue> m_commandQueue;
-  ComPtr<ID3D12CommandAllocator> m_commandAllocator;
-  ComPtr<ID3D12GraphicsCommandList> m_commandList;
-  HANDLE m_fenceEvent;
-  ComPtr<ID3D12Fence> m_fence;
-  UINT64 m_fenceValue;
+  ComPtr<ID3D12CommandQueue> m_command_queue_;
+  ComPtr<ID3D12CommandAllocator> m_command_allocator_;
+  ComPtr<ID3D12GraphicsCommandList> m_command_list_;
+  HANDLE m_fence_event_;
+  ComPtr<ID3D12Fence> m_fence_;
+  UINT64 m_fence_value_;
 
-  ComPtr<IDXGIFactory4> m_factory;
-  ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
-  UINT m_rtvDescriptorSize;
-  UINT m_frameIndex;
+  ComPtr<IDXGIFactory4> m_factory_;
+  ComPtr<ID3D12DescriptorHeap> m_rtv_heap_;
+  UINT m_rtv_descriptor_size_;
+  UINT m_frame_index_;
 
-  Renderer* m_renderer;
+  Renderer* p_renderer_;
 };

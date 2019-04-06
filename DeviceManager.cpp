@@ -7,7 +7,7 @@
 	 - Command Allocators     -> Used to store the commands on the GPU
 	 - Pipeline State Objects -> Used for setting pipeline state that determine how input data is interpreted and rendered
 	 - Root Signatures		  -> Defines the data (resources) that shaders access
-	 - Command Queues         -> Used for submitting Command Lists to be executed by the CPU or update resource tile mappings
+	 - Command Queues         -> Used for submitting Command Lists to be executed by the CPU or Update resource tile mappings
 	 - Fences                 -> Used to synchronize CPU and GPU
 	 - Resources			  -> contain the data used to build your scene. They are chunks of memory that store geometry, textures, and shader data, where the graphics pipeline can access them
 	 - Descriptors			  -> a structure which tells shaders where to find the resource, and how to interpret the data in the resource
@@ -113,37 +113,37 @@ bool DeviceManager::CreateDevice(ComPtr<ID3D12Device>& device, ComPtr<IDXGIFacto
 }
 
 
-bool DeviceManager::CreateComandQueue(ComPtr<ID3D12Device>& device, ComPtr<ID3D12CommandQueue>& commandQueue,
-                                      ComPtr<ID3D12CommandAllocator>& commandAllocator,
-                                      ComPtr<ID3D12GraphicsCommandList>& commandList, ComPtr<ID3D12Fence>& fence,
-                                      HANDLE& fenceEvent, UINT64& fenceValue) {
+bool DeviceManager::CreateComandQueue(ComPtr<ID3D12Device>& device, ComPtr<ID3D12CommandQueue>& command_queue,
+                                        ComPtr<ID3D12CommandAllocator>& command_allocator,
+                                        ComPtr<ID3D12GraphicsCommandList>& command_list, ComPtr<ID3D12Fence>& fence,
+                                        HANDLE& fence_event, UINT64& fence_value) {
   D3D12_COMMAND_QUEUE_DESC queueDesc = {};
   queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
   queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 
   // Create command queue
-  hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&commandQueue));
+  hr = device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&command_queue));
   if (FAILED(hr)) {
     Log::Error("Error creating command queue for device -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // create command allocator
-  hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&commandAllocator));
+  hr = device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&command_allocator));
   if (FAILED(hr)) {
     Log::Error("Error creating command allocator for device -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // create command list
-  hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, commandAllocator.Get(), nullptr,
-                                 IID_PPV_ARGS(&commandList));
+  hr = device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, command_allocator.Get(), nullptr,
+                                 IID_PPV_ARGS(&command_list));
   if (FAILED(hr)) {
     Log::Error("Error creating command list for device -ERROR:" + std::to_string(hr));
     return false;
   }
 
-  hr = commandList->Close();
+  hr = command_list->Close();
   if (FAILED(hr)) {
     Log::Error("Error closing command list -ERROR:" + std::to_string(hr));
     return false;
@@ -154,9 +154,9 @@ bool DeviceManager::CreateComandQueue(ComPtr<ID3D12Device>& device, ComPtr<ID3D1
     Log::Error("Error creating fence -ERROR:" + std::to_string(hr));
     return false;
   }
-  fenceValue = 1;
-  fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-  if (fenceEvent == nullptr) {
+  fence_value = 1;
+  fence_event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+  if (fence_event == nullptr) {
     if (FAILED(HRESULT_FROM_WIN32(GetLastError()))) {
       Log::Error("Error creating fence event");
       return false;
@@ -167,8 +167,8 @@ bool DeviceManager::CreateComandQueue(ComPtr<ID3D12Device>& device, ComPtr<ID3D1
 
 
 bool DeviceManager::CreateSwapChain(HWND& hwnd, ComPtr<IDXGIFactory4>& factory,
-                                    ComPtr<ID3D12CommandQueue>& commandQueue, UINT width, UINT height,
-                                    ComPtr<IDXGISwapChain3>& swapChain, UINT& frameIndex) {
+                                      ComPtr<ID3D12CommandQueue>& command_queue, UINT width, UINT height,
+                                      ComPtr<IDXGISwapChain3>& swap_chain, UINT& frame_index) {
   DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
   swapChainDesc.BufferCount = DXGE_FRAME_COUNT;
   swapChainDesc.Width = width;
@@ -180,7 +180,7 @@ bool DeviceManager::CreateSwapChain(HWND& hwnd, ComPtr<IDXGIFactory4>& factory,
 
   ComPtr<IDXGISwapChain1> tmpSwap;
   hr = factory->CreateSwapChainForHwnd(
-    commandQueue.Get(), // pointer to a direct command queue
+    command_queue.Get(), // pointer to a direct command queue
     hwnd, // The HWND handle that is associated with the swap chain that CreateSwapChainForHwnd creates.
     // This parameter cannot be NULL.
     &swapChainDesc, // A pointer to a DXGI_SWAP_CHAIN_DESC1 structure for the swap-chain description.
@@ -206,27 +206,27 @@ bool DeviceManager::CreateSwapChain(HWND& hwnd, ComPtr<IDXGIFactory4>& factory,
   }
 
   // Swap chain cast to higher swap chain functionality
-  hr = tmpSwap.As(&swapChain);
+  hr = tmpSwap.As(&swap_chain);
   if (FAILED(hr)) {
     Log::Error("Error cast swap chain -ERROR:" + std::to_string(hr));
     return false;
   }
-  frameIndex = swapChain->GetCurrentBackBufferIndex();
+  frame_index = swap_chain->GetCurrentBackBufferIndex();
 
   return true;
 }
 
 
-bool DeviceManager::CreateRenderTargets(ComPtr<ID3D12Device>& device, ComPtr<IDXGISwapChain3>& swapChain,
-                                        ComPtr<ID3D12Resource> renderTargets[DXGE_FRAME_COUNT],
-                                        ComPtr<ID3D12DescriptorHeap>& rtvHeap, UINT& rtvDescriptorSize) {
+bool DeviceManager::CreateRenderTargets(ComPtr<ID3D12Device>& device, ComPtr<IDXGISwapChain3>& swap_chain,
+                                          ComPtr<ID3D12Resource> render_targets[DXGE_FRAME_COUNT],
+                                          ComPtr<ID3D12DescriptorHeap>& rtv_heap, UINT& rtv_descriptor_size) {
 
   // Create render target view (RTV) heap descriptor
   D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc = {};
   rtvHeapDesc.NumDescriptors = DXGE_FRAME_COUNT;
   rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
   rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-  hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtvHeap));
+  hr = device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&rtv_heap));
   if (FAILED(hr)) {
     Log::Error("Error create descriptor heap -ERROR:" + std::to_string(hr));
     return false;
@@ -234,18 +234,18 @@ bool DeviceManager::CreateRenderTargets(ComPtr<ID3D12Device>& device, ComPtr<IDX
 
   // Gets the size of the handle increment for the given type of descriptor heap.
   // This value is typically used to increment a handle into a descriptor array by the correct amount.
-  rtvDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+  rtv_descriptor_size = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
   // Create RTV for each frame
-  CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart());
+  CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtv_heap->GetCPUDescriptorHandleForHeapStart());
   for (UINT counter = 0; counter < DXGE_FRAME_COUNT; counter++) {
-    hr = swapChain->GetBuffer(counter, IID_PPV_ARGS(&renderTargets[counter]));
+    hr = swap_chain->GetBuffer(counter, IID_PPV_ARGS(&render_targets[counter]));
     if (FAILED(hr)) {
       Log::Error("Error get swap chain buffer -ERROR:" + std::to_string(hr));
       return false;
     }
-    device->CreateRenderTargetView(renderTargets[counter].Get(), nullptr, rtvHandle);
-    rtvHandle.Offset(1, rtvDescriptorSize);
+    device->CreateRenderTargetView(render_targets[counter].Get(), nullptr, rtvHandle);
+    rtvHandle.Offset(1, rtv_descriptor_size);
   }
   return true;
 }

@@ -1,5 +1,5 @@
 #include "stdafx.h"
-#include "renderer.h"
+#include "Renderer.h"
 
 
 bool Renderer::CreatePipelineState(ComPtr<ID3D12Device>&, int, int) {
@@ -8,26 +8,26 @@ bool Renderer::CreatePipelineState(ComPtr<ID3D12Device>&, int, int) {
 
 
 bool Renderer::LoadResources(ComPtr<ID3D12Device>&, ComPtr<ID3D12GraphicsCommandList>&,
-                             ComPtr<ID3D12CommandAllocator>& commandAllocator, int, int) {
+                              ComPtr<ID3D12CommandAllocator>& command_allocator, int, int) {
   return true;
 }
 
 
-bool Renderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                   ComPtr<ID3D12CommandAllocator>& commandAllocator,
-                                   CD3DX12_CPU_DESCRIPTOR_HANDLE& rtvHandle, ComPtr<ID3D12Resource>& renderTarget,
-                                   int frameIndex) {
+bool Renderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& command_list,
+                                     ComPtr<ID3D12CommandAllocator>& command_allocator,
+                                     CD3DX12_CPU_DESCRIPTOR_HANDLE& rtv_handle, ComPtr<ID3D12Resource>& render_target,
+                                     int frameIndex) {
   // Reset the command Allocator
-  HRESULT hr = commandAllocator->Reset();
+  HRESULT hr = command_allocator->Reset();
   if (FAILED(hr)) {
-    Log::Error("Error commandAllocator->Reset() -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_allocator->Reset() -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // Reset the command list
-  hr = commandList->Reset(commandAllocator.Get(), nullptr);
+  hr = command_list->Reset(command_allocator.Get(), nullptr);
   if (FAILED(hr)) {
-    Log::Error("Error commandList->Reset -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_list->Reset -ERROR:" + std::to_string(hr));
     return false;
   }
 
@@ -39,8 +39,8 @@ bool Renderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandLis
     Before: present
     After: render target
   */
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_PRESENT,
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_PRESENT,
                                              D3D12_RESOURCE_STATE_RENDER_TARGET));
 
   /* Sets CPU descriptor handles for the render targets and depth stencil.
@@ -51,7 +51,7 @@ bool Renderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandLis
       false: the handle is the first of an array of NumRenderTargetDescriptors handles
     pDepthStencilDescriptor: A pointer to a D3D12_CPU_DESCRIPTOR_HANDLE structure that describes the CPU descriptor handle that represents the start of the heap that holds the depth stencil descriptor.
   */
-  commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+  command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, nullptr);
 
   // Set THM colors
   const float clearColor[] = {0.29f, 0.36f, 0.4f, 1.0f};
@@ -62,7 +62,7 @@ bool Renderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandLis
     NumRects: The number of rectangles in the array that the pRects parameter specifies.
     pRects: An array of D3D12_RECT structures for the rectangles in the resource view to clear. If NULL, ClearRenderTargetView clears the entire resource view.
   */
-  commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+  command_list->ClearRenderTargetView(rtv_handle, clearColor, 0, nullptr);
 
   /*	Notifies the driver that it needs to synchronize multiple accesses to resources.
     Set Resource Barrier for render target
@@ -72,14 +72,14 @@ bool Renderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandLis
     Before: render target
     After: present
   */
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
                                              D3D12_RESOURCE_STATE_PRESENT));
 
   // close command list
-  hr = commandList->Close();
+  hr = command_list->Close();
   if (FAILED(hr)) {
-    Log::Error("Error commandList->Close() - ERROR:" + std::to_string(hr));
+    Log::Error("Error command_list->Close() - ERROR:" + std::to_string(hr));
     return false;
   }
   return true;
@@ -89,9 +89,9 @@ bool Renderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandLis
 void Renderer::Release() {}
 
 
-bool Renderer::Intersects(BoundingVolume& cameraBounds, XMFLOAT3& resolution) {
+bool Renderer::Intersects(BoundingVolume& camera, XMFLOAT3& resolution) {
   return false;
 }
 
 
-void Renderer::Update(int frameIndex, double delta) { }
+void Renderer::Update(int frame_index, double delta) { }

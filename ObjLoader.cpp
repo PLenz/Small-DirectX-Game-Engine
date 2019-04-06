@@ -4,7 +4,7 @@
 #include <iostream>
 
 
-void ObjLoader::Load(string filename, Vertex*& outVertices, int& vcount, DWORD*& outIndices, int& icount,
+void ObjLoader::Load(string filename, Vertex*& vertices_out, int& vertices_count_out, DWORD*& indices_out, int& indices_count_out,
                      BoundingVolume* & boundingVolume) {
   std::ifstream input(filename);
   vector<XMFLOAT3> positions;
@@ -51,15 +51,15 @@ void ObjLoader::Load(string filename, Vertex*& outVertices, int& vcount, DWORD*&
   for (int i = 0; i < verticesVector.size(); ++i) {
     v[i] = verticesVector[i];
   }
-  outVertices = v;
-  vcount = verticesVector.size();
+  vertices_out = v;
+  vertices_count_out = verticesVector.size();
 
   DWORD* i = new DWORD[indices.size()];
   for (int j = 0; j < indices.size(); ++j) {
     i[j] = indices[j];
   }
-  outIndices = i;
-  icount = indices.size();
+  indices_out = i;
+  indices_count_out = indices.size();
 
   boundingVolume = new BoundingVolume(verticesVector, indices);
 

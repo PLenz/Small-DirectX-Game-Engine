@@ -20,8 +20,8 @@ bool TriangleRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int wid
   // Wird einmalig beim Start aufgerufen. Implementierung gem‰ﬂ Vorlesung
 
   // init viewport and scissorRect with default values
-  m_viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
-  m_scissorRect = CD3DX12_RECT(0, 0, static_cast<float>(width), static_cast<float>(height));
+  m_viewport_ = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+  m_scissor_rect_ = CD3DX12_RECT(0, 0, static_cast<float>(width), static_cast<float>(height));
 
   // create empty root signature
   if (!this->CreateRootSignature(device)) {
@@ -47,7 +47,7 @@ bool TriangleRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int wid
   // Describe and create the graphics pipeline state object (PSO).
   D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {}; // a structure to define a pso
   psoDesc.InputLayout = {inputElementDescs, _countof(inputElementDescs)}; // The format of your vertex structure
-  psoDesc.pRootSignature = m_rootSignature.Get();
+  psoDesc.pRootSignature = m_root_signature_.Get();
   // A root signature is basically a parameter list of data that the shader functions expect. 
   // The shaders must be compatible with the Root Signature.
   psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
@@ -81,20 +81,20 @@ bool TriangleRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int wid
 }
 
 
-bool TriangleRenderer::LoadResources(ComPtr<ID3D12Device>& m_device, ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                     ComPtr<ID3D12CommandAllocator>& commandAllocator, int width, int height) {
+bool TriangleRenderer::LoadResources(ComPtr<ID3D12Device>& m_device, ComPtr<ID3D12GraphicsCommandList>& command_list,
+                                      ComPtr<ID3D12CommandAllocator>& command_allocator, int width, int height) {
   HRESULT hr;
   // Reset the command allocator
-  hr = commandAllocator->Reset();
+  hr = command_allocator->Reset();
   if (FAILED(hr)) {
-    Log::Error("Error commandAllocator->Reset() -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_allocator->Reset() -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // Reset the command list
-  hr = commandList->Reset(commandAllocator.Get(), m_pipelineState.Get());
+  hr = command_list->Reset(command_allocator.Get(), m_pipeline_state_.Get());
   if (FAILED(hr)) {
-    Log::Error("Error commandList->Reset -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_list->Reset -ERROR:" + std::to_string(hr));
     return false;
   }
 
@@ -110,12 +110,12 @@ bool TriangleRenderer::LoadResources(ComPtr<ID3D12Device>& m_device, ComPtr<ID3D
     {{0.25f, 0.25f, 0.0f}, THM_RED},
   };
 
-  if (!this->CreateVertexBuffer(m_device, commandList, triangleVertices, sizeof(triangleVertices))) {
+  if (!this->CreateVertexBuffer(m_device, command_list, triangleVertices, sizeof(triangleVertices))) {
     Log::Error("Error create vertex buffer -ERROR:");
     return false;
   }
 
-  hr = commandList->Close();
+  hr = command_list->Close();
   if (FAILED(hr)) {
     Log::Error("Error close command list -ERROR:" + std::to_string(hr));
     return false;
@@ -124,55 +124,55 @@ bool TriangleRenderer::LoadResources(ComPtr<ID3D12Device>& m_device, ComPtr<ID3D
 }
 
 
-bool TriangleRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                           ComPtr<ID3D12CommandAllocator>& commandAllocator,
-                                           CD3DX12_CPU_DESCRIPTOR_HANDLE& rtvHandle,
-                                           ComPtr<ID3D12Resource>& renderTarget, int frameIndex) {
+bool TriangleRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& command_list,
+                                             ComPtr<ID3D12CommandAllocator>& command_allocator,
+                                             CD3DX12_CPU_DESCRIPTOR_HANDLE& rtv_handle,
+                                             ComPtr<ID3D12Resource>& render_target, int frame_index) {
   // Wird mit jedem Frame aufgerufen
   // we can only reset an allocator once the gpu is done with it
   // resetting an allocator frees the memory that the command list was stored in
-  HRESULT hr = commandAllocator->Reset();
+  HRESULT hr = command_allocator->Reset();
   if (FAILED(hr)) {
-    Log::Error("Error commandAllocator->Reset() -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_allocator->Reset() -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // Reset the command list
-  hr = commandList->Reset(commandAllocator.Get(), m_pipelineState.Get());
+  hr = command_list->Reset(command_allocator.Get(), m_pipeline_state_.Get());
   if (FAILED(hr)) {
-    Log::Error("Error commandList->Reset -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_list->Reset -ERROR:" + std::to_string(hr));
     return false;
   }
 
-  commandList->SetGraphicsRootSignature(m_rootSignature.Get()); // set the root signature
-  commandList->RSSetViewports(1, &m_viewport); // set the viewports
-  commandList->RSSetScissorRects(1, &m_scissorRect); // set the scissor rects
-  // here we start recording commands into the commandList (which all the commands will be stored in the commandAllocator)
+  command_list->SetGraphicsRootSignature(m_root_signature_.Get()); // set the root signature
+  command_list->RSSetViewports(1, &m_viewport_); // set the viewports
+  command_list->RSSetScissorRects(1, &m_scissor_rect_); // set the scissor rects
+  // here we start recording commands into the command_list (which all the commands will be stored in the command_allocator)
 
-  // transition the "frameIndex" render target from the present state to the render target state so the command list draws to it starting from here
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_PRESENT,
+  // transition the "frame_index" render target from the present state to the render target state so the command list draws to it starting from here
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_PRESENT,
                                              D3D12_RESOURCE_STATE_RENDER_TARGET));
 
   // set the render target for the output merger stage (the output of the pipeline)
-  commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+  command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, nullptr);
 
   // Clear the render target by using the ClearRenderTargetView command
   const float clearColor[] = THM_GREY;
-  commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+  command_list->ClearRenderTargetView(rtv_handle, clearColor, 0, nullptr);
 
   // draw triangle
-  commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
-  commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView); // set the vertex buffer (using the vertex buffer view)
-  commandList->DrawInstanced(6, 1, 0, 0); // finally draw 3 vertices (draw the triangle)
+  command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
+  command_list->IASetVertexBuffers(0, 1, &m_vertex_buffer_view_); // set the vertex buffer (using the vertex buffer view)
+  command_list->DrawInstanced(6, 1, 0, 0); // finally draw 3 vertices (draw the triangle)
 
-  // transition the "frameIndex" render target from the render target state to the present state. If the debug layer is enabled, you will receive a
+  // transition the "frame_index" render target from the render target state to the present state. If the debug layer is enabled, you will receive a
   // warning if present is called on the render target when it's not in the present state
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
                                              D3D12_RESOURCE_STATE_PRESENT));
 
-  hr = commandList->Close();
+  hr = command_list->Close();
   if (FAILED(hr)) {
     Log::Error("Error close command list -ERROR:" + std::to_string(hr));
     return false;
@@ -181,8 +181,8 @@ bool TriangleRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& co
 }
 
 
-bool TriangleRenderer::CreateVertexBuffer(ComPtr<ID3D12Device>& device, ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                          Vertex* vList, int vertexBufferSize) {
+bool TriangleRenderer::CreateVertexBuffer(ComPtr<ID3D12Device>& device, ComPtr<ID3D12GraphicsCommandList>& command_list,
+                                          Vertex* v_list, int vertex_buffer_size) {
   // Sollte einmalig genutzt werden wenn Ressourcen geladen werden. Implementierung gem‰ﬂ Vorlesung.
 
   // create default heap
@@ -192,7 +192,7 @@ bool TriangleRenderer::CreateVertexBuffer(ComPtr<ID3D12Device>& device, ComPtr<I
   device->CreateCommittedResource(
     &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), // a default heap
     D3D12_HEAP_FLAG_NONE, // no flags
-    &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize), // resource description for a buffer
+    &CD3DX12_RESOURCE_DESC::Buffer(vertex_buffer_size), // resource description for a buffer
     D3D12_RESOURCE_STATE_COPY_DEST, // we will start this heap in the copy destination state since we will copy data
     // from the upload heap to this heap
     nullptr,
@@ -200,7 +200,7 @@ bool TriangleRenderer::CreateVertexBuffer(ComPtr<ID3D12Device>& device, ComPtr<I
     IID_PPV_ARGS(&m_vertexBuffer));
 
   // we can give resource heaps a name so when we debug with the graphics debugger we know what resource we are looking at
-  m_vertexBuffer->SetName(L"Vertex Buffer Resource Heap");
+  m_vertex_buffer_->SetName(L"Vertex Buffer Resource Heap");
 
   // create upload heap
   // upload heaps are used to upload data to the GPU. CPU can write to it, GPU can read from it
@@ -209,7 +209,7 @@ bool TriangleRenderer::CreateVertexBuffer(ComPtr<ID3D12Device>& device, ComPtr<I
   device->CreateCommittedResource(
     &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // upload heap
     D3D12_HEAP_FLAG_NONE, // no flags
-    &CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize), // resource description for a buffer
+    &CD3DX12_RESOURCE_DESC::Buffer(vertex_buffer_size), // resource description for a buffer
     D3D12_RESOURCE_STATE_GENERIC_READ, // GPU will read from this buffer and copy its contents to the default heap
     nullptr,
     IID_PPV_ARGS(&vertexBufferUploadHeap));
@@ -217,29 +217,29 @@ bool TriangleRenderer::CreateVertexBuffer(ComPtr<ID3D12Device>& device, ComPtr<I
 
   // store vertex buffer in upload heap
   D3D12_SUBRESOURCE_DATA vertexData = {};
-  vertexData.pData = reinterpret_cast<BYTE*>(vList); // pointer to our vertex array
-  vertexData.RowPitch = vertexBufferSize; // size of all our triangle vertex data
-  vertexData.SlicePitch = vertexBufferSize; // also the size of our triangle vertex data
+  vertexData.pData = reinterpret_cast<BYTE*>(v_list); // pointer to our vertex array
+  vertexData.RowPitch = vertex_buffer_size; // size of all our triangle vertex data
+  vertexData.SlicePitch = vertex_buffer_size; // also the size of our triangle vertex data
 
   // we are now creating a command with the command list to copy the data from
   // the upload heap to the default heap
-  UINT64 r = UpdateSubresources(commandList.Get(), m_vertexBuffer.Get(), vertexBufferUploadHeap, 0, 0, 1, &vertexData);
+  UINT64 r = UpdateSubresources(command_list.Get(), m_vertex_buffer_.Get(), vertexBufferUploadHeap, 0, 0, 1, &vertexData);
 
   // transition the vertex buffer data from copy destination state to vertex buffer state
-  commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertexBuffer.Get(),
+  command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_vertex_buffer_.Get(),
                                                                         D3D12_RESOURCE_STATE_COPY_DEST,
                                                                         D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER));
 
   // create a vertex buffer view for the triangle. We get the GPU memory address to the vertex pointer using the GetGPUVirtualAddress() method
-  m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-  m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-  m_vertexBufferView.SizeInBytes = vertexBufferSize;
+  m_vertex_buffer_view_.BufferLocation = m_vertex_buffer_->GetGPUVirtualAddress();
+  m_vertex_buffer_view_.StrideInBytes = sizeof(Vertex);
+  m_vertex_buffer_view_.SizeInBytes = vertex_buffer_size;
   return true;
 }
 
 
-bool TriangleRenderer::CompileShaders(ComPtr<ID3DBlob>& vertexShader, LPCSTR entryPointVertexShader,
-                                      ComPtr<ID3D10Blob>& pixelShader, LPCSTR entryPointPixelShader) {
+bool TriangleRenderer::CompileShaders(ComPtr<ID3DBlob>& vertex_shader, LPCSTR entry_point_vertex_shader,
+                                      ComPtr<ID3D10Blob>& pixel_shader, LPCSTR entry_point_pixel_shader) {
   // Sollte einmalig genutzt werden bevor das PSO gesetzt wird.
 #if defined(_DEBUG)
   // Enable better shader debugging with the graphics debugging tools.
@@ -248,15 +248,15 @@ bool TriangleRenderer::CompileShaders(ComPtr<ID3DBlob>& vertexShader, LPCSTR ent
         UINT compileFlags = 0;
 #endif
 
-  HRESULT hr = D3DCompileFromFile(L"vertexShader.hlsl", nullptr, nullptr, entryPointVertexShader, "vs_5_0",
-                                  compileFlags, 0, &vertexShader, nullptr);
+  HRESULT hr = D3DCompileFromFile(L"vertex_shader.hlsl", nullptr, nullptr, entry_point_vertex_shader, "vs_5_0",
+                                  compileFlags, 0, &vertex_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile vertex shader -ERROR:" + std::to_string(hr));
     return false;
   }
 
-  hr = D3DCompileFromFile(L"pixelShader.hlsl", nullptr, nullptr, entryPointPixelShader, "ps_5_0", compileFlags, 0,
-                          &pixelShader, nullptr);
+  hr = D3DCompileFromFile(L"pixel_shader.hlsl", nullptr, nullptr, entry_point_pixel_shader, "ps_5_0", compileFlags, 0,
+                          &pixel_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile pixel shader -ERROR:" + std::to_string(hr));
     return false;
@@ -290,8 +290,8 @@ bool TriangleRenderer::CreateRootSignature(ComPtr<ID3D12Device>& device) {
 
 void TriangleRenderer::Release() {
   // Erst Resourcen dieser Klasse freigeben, dann die Resourcen der Basisklasse
-  m_rootSignature.Reset();
-  m_pipelineState.Reset();
-  m_vertexBuffer.Reset();
+  m_root_signature_.Reset();
+  m_pipeline_state_.Reset();
+  m_vertex_buffer_.Reset();
   Renderer::Release();
 }

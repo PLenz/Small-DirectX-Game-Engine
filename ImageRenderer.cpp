@@ -8,8 +8,8 @@ bool ImageRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int width,
   // Wird einmalig beim Start aufgerufen.
 
   // init viewport and scissorRect with default values
-  m_viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
-  m_scissorRect = CD3DX12_RECT(0, 0, static_cast<float>(width), static_cast<float>(height));
+  m_viewport_ = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+  m_scissor_rect_ = CD3DX12_RECT(0, 0, static_cast<float>(width), static_cast<float>(height));
 
   // create empty root signature
   if (!this->CreateRootSignature(device)) {
@@ -37,7 +37,7 @@ bool ImageRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int width,
   D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {}; // a structure to define a pso
 
   psoDesc.InputLayout = {inputElementDescs, _countof(inputElementDescs)}; // The format of your vertex structure
-  psoDesc.pRootSignature = m_rootSignature.Get();
+  psoDesc.pRootSignature = m_root_signature_.Get();
   // A root signature is basically a parameter list of data that the shader functions expect. The shaders must be compatible with the Root Signature.
   psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
   // A D3D12_SHADER_BYTECODE structure that describes the vertex shader.
@@ -70,17 +70,17 @@ bool ImageRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int width,
 
 
 bool ImageRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                  ComPtr<ID3D12CommandAllocator>& commandAllocator, int width, int height) {
+                                   ComPtr<ID3D12CommandAllocator>& command_allocator, int width, int height) {
   HRESULT hr;
   // Wird einmalig beim Start aufgerufen.
-  hr = commandAllocator->Reset();
+  hr = command_allocator->Reset();
   if (FAILED(hr)) {
-    Log::Error("Error commandAllocator->Reset() -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_allocator->Reset() -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // Reset the command list
-  hr = commandList->Reset(commandAllocator.Get(), m_pipelineState.Get());
+  hr = commandList->Reset(command_allocator.Get(), m_pipeline_state_.Get());
   if (FAILED(hr)) {
     Log::Error("Error commandList->Reset -ERROR:" + std::to_string(hr));
     return false;
@@ -93,9 +93,9 @@ bool ImageRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Gra
   DWORD* iList;
   int vCount;
   BoundingVolume* boundingVolume;
-  ObjLoader::Load("models/plane.obj", triangleVertices, vCount, iList, iListSize, boundingVolume);
+  ObjLoader::Load("models/plane.obj", triangleVertices, vCount, iList, i_list_size_, boundingVolume);
 
-  if (!this->CreateIndexBuffer(device, commandList, iList, sizeof(DWORD) * iListSize)) {
+  if (!this->CreateIndexBuffer(device, commandList, iList, sizeof(DWORD) * i_list_size_)) {
     Log::Error("Error create index buffer -ERROR:");
     return false;
   }
@@ -129,74 +129,75 @@ bool ImageRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Gra
 }
 
 
-bool ImageRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                        ComPtr<ID3D12CommandAllocator>& commandAllocator,
-                                        CD3DX12_CPU_DESCRIPTOR_HANDLE& rtvHandle, ComPtr<ID3D12Resource>& renderTarget,
-                                        int frameIndex) {
+bool ImageRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& command_list,
+                                          ComPtr<ID3D12CommandAllocator>& command_allocator,
+                                          CD3DX12_CPU_DESCRIPTOR_HANDLE& rtv_handle,
+                                          ComPtr<ID3D12Resource>& render_target,
+                                          int frame_index) {
   // Wird mit jedem Frame aufgerufen.
   // we can only reset an allocator once the gpu is done with it
   // resetting an allocator frees the memory that the command list was stored in
-  HRESULT hr = commandAllocator->Reset();
+  HRESULT hr = command_allocator->Reset();
   if (FAILED(hr)) {
-    Log::Error("Error commandAllocator->Reset() -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_allocator->Reset() -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // Reset the command list
-  hr = commandList->Reset(commandAllocator.Get(), m_pipelineState.Get());
+  hr = command_list->Reset(command_allocator.Get(), m_pipeline_state_.Get());
   if (FAILED(hr)) {
-    Log::Error("Error commandList->Reset -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_list->Reset -ERROR:" + std::to_string(hr));
     return false;
   }
 
-  commandList->SetGraphicsRootSignature(m_rootSignature.Get()); // set the root signature
-  commandList->RSSetViewports(1, &m_viewport); // set the viewports
-  commandList->RSSetScissorRects(1, &m_scissorRect); // set the scissor rects
-  // here we start recording commands into the commandList (which all the commands will be stored in the commandAllocator)
+  command_list->SetGraphicsRootSignature(m_root_signature_.Get()); // set the root signature
+  command_list->RSSetViewports(1, &m_viewport_); // set the viewports
+  command_list->RSSetScissorRects(1, &m_scissor_rect_); // set the scissor rects
+  // here we start recording commands into the command_list (which all the commands will be stored in the command_allocator)
 
-  // transition the "frameIndex" render target from the present state to the render target state so the command list draws to it starting from here
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_PRESENT,
+  // transition the "frame_index" render target from the present state to the render target state so the command list draws to it starting from here
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_PRESENT,
                                              D3D12_RESOURCE_STATE_RENDER_TARGET));
 
   // set the render target for the output merger stage (the output of the pipeline)
   // get a handle to the depth/stencil buffer
-  CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+  CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_depth_stencil_descriptor_heap_->GetCPUDescriptorHandleForHeapStart());
 
   // set the render target for the output merger stage (the output of the pipeline)
-  commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+  command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &dsvHandle);
 
   // Clear the render target by using the ClearRenderTargetView command
   const float clearColor[] = WHITE;
-  commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+  command_list->ClearRenderTargetView(rtv_handle, clearColor, 0, nullptr);
 
   // clear the depth/stencil buffer
-  commandList->ClearDepthStencilView(m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+  command_list->ClearDepthStencilView(m_depth_stencil_descriptor_heap_->GetCPUDescriptorHandleForHeapStart(),
                                      D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
   // set constant buffer descriptor heap
-  ID3D12DescriptorHeap* descriptorHeaps[] = {m_mainDescriptorHeap[frameIndex].Get()};
-  commandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+  ID3D12DescriptorHeap* descriptorHeaps[] = {m_main_descriptor_heap_[frame_index].Get()};
+  command_list->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
   // set the descriptor table to the descriptor heap (parameter 1, as constant buffer root descriptor is parameter index 0)
-  commandList->
-    SetGraphicsRootDescriptorTable(1, m_mainDescriptorHeap[frameIndex]->GetGPUDescriptorHandleForHeapStart());
+  command_list->
+    SetGraphicsRootDescriptorTable(1, m_main_descriptor_heap_[frame_index]->GetGPUDescriptorHandleForHeapStart());
 
   // draw triangle
-  commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
-  commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView); // set the vertex buffer (using the vertex buffer view)
-  commandList->IASetIndexBuffer(&m_indexBufferView);
+  command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
+  command_list->IASetVertexBuffers(0, 1, &m_vertex_buffer_view_); // set the vertex buffer (using the vertex buffer view)
+  command_list->IASetIndexBuffer(&m_index_buffer_view_);
 
-  commandList->SetGraphicsRootConstantBufferView(0, m_constantBufferUploadHeap[frameIndex]->GetGPUVirtualAddress());
-  commandList->DrawIndexedInstanced(iListSize, 1, 0, 0, 0); // finally draw 3 vertices (draw the first triangle)
+  command_list->SetGraphicsRootConstantBufferView(0, m_constant_buffer_upload_heap_[frame_index]->GetGPUVirtualAddress());
+  command_list->DrawIndexedInstanced(i_list_size_, 1, 0, 0, 0); // finally draw 3 vertices (draw the first triangle)
 
-  // transition the "frameIndex" render target from the render target state to the present state. If the debug layer is enabled, you will receive a
+  // transition the "frame_index" render target from the render target state to the present state. If the debug layer is enabled, you will receive a
   // warning if present is called on the render target when it's not in the present state
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
                                              D3D12_RESOURCE_STATE_PRESENT));
 
-  hr = commandList->Close();
+  hr = command_list->Close();
   if (FAILED(hr)) {
     Log::Error("Error close command list -ERROR:" + std::to_string(hr));
     return false;
@@ -205,25 +206,25 @@ bool ImageRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& comma
 }
 
 
-void ImageRenderer::Update(int frameIndex, double delta) {
-  // update app logic, such as moving the camera or figuring out what objects are in view
+void ImageRenderer::Update(int frame_index, double delta) {
+  // Update app logic, such as moving the camera or figuring out what objects are in view
 
-  // update constant buffer
+  // Update constant buffer
   // create the wvp matrix and store in constant buffer
   XMMATRIX viewMat = XMLoadFloat4x4(&Camera::GetViewMatrix()); // load view matrix
   XMMATRIX projMat = XMLoadFloat4x4(&Camera::GetProjectionMatrix()); // load projection matrix
   XMMATRIX transposed = XMMatrixTranspose(viewMat * projMat); // must transpose wvp matrix for the gpu
-  XMStoreFloat4x4(&m_constantBuffer.wvpMat, transposed); // store transposed wvp matrix in constant buffer
+  XMStoreFloat4x4(&m_constant_buffer_.wvpMat, transposed); // store transposed wvp matrix in constant buffer
 
   // copy our ConstantBuffer instance to the mapped constant buffer resource
-  memcpy(m_constantBufferGPUAddress[frameIndex], &m_constantBuffer, sizeof(m_constantBuffer));
+  memcpy(p_constant_buffer_gpu_address_[frame_index], &m_constant_buffer_, sizeof(m_constant_buffer_));
 }
 
 
 void ImageRenderer::Release() {
-  m_textureBuffer.Reset(); // the resource heap containing our texture
-  m_textureBufferUploadHeap.Reset();
-  delete m_logoData;
+  m_texture_buffer_.Reset(); // the resource heap containing our texture
+  m_texture_buffer_upload_heap_.Reset();
+  delete p_data_;
   DepthQuadRenderer::Release();
 }
 
@@ -315,7 +316,7 @@ bool ImageRenderer::LoadTexture(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Graph
   // Load the image from file
   D3D12_RESOURCE_DESC textureDesc;
   int imageBytesPerRow;
-  int imageSize = TextureLoader::LoadImageDataFromFile(&m_logoData, textureDesc, L"thm.png", imageBytesPerRow);
+  int imageSize = TextureLoader::LoadImageDataFromFile(&p_data_, textureDesc, L"thm.png", imageBytesPerRow);
   // make sure we have data
   if (imageSize <= 0) {
     Log::Error("Image has no size -ERROR:");
@@ -330,12 +331,12 @@ bool ImageRenderer::LoadTexture(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Graph
     D3D12_RESOURCE_STATE_COPY_DEST,
     // We will copy the texture from the upload heap to here, so we start it out in a copy dest state
     nullptr, // used for render targets and depth/stencil buffers
-    IID_PPV_ARGS(&m_textureBuffer));
+    IID_PPV_ARGS(&m_texture_buffer_));
   if (FAILED(hr)) {
     Log::Error("Error create default heap in LoadTexture -ERROR:" + std::to_string(hr));
     return false;
   }
-  m_textureBuffer->SetName(L"Texture Buffer Resource Heap");
+  m_texture_buffer_->SetName(L"Texture Buffer Resource Heap");
 
   UINT64 textureUploadBufferSize;
   // this function gets the size an upload buffer needs to be to upload a texture to the gpu.
@@ -352,24 +353,24 @@ bool ImageRenderer::LoadTexture(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Graph
     // resource description for a buffer (storing the image data in this heap just to copy to the default heap)
     D3D12_RESOURCE_STATE_GENERIC_READ, // We will copy the contents from this heap to the default heap above
     nullptr,
-    IID_PPV_ARGS(&m_textureBufferUploadHeap));
+    IID_PPV_ARGS(&m_texture_buffer_upload_heap_));
   if (FAILED(hr)) {
     Log::Error("Error create upload heap in LoadTexture -ERROR:" + std::to_string(hr));
     return false;
   }
-  m_textureBufferUploadHeap->SetName(L"Texture Buffer Upload Resource Heap");
+  m_texture_buffer_upload_heap_->SetName(L"Texture Buffer Upload Resource Heap");
 
   // store texture buffer in upload heap
   D3D12_SUBRESOURCE_DATA textureData = {};
-  textureData.pData = &m_logoData[0]; // pointer to our image data
+  textureData.pData = &p_data_[0]; // pointer to our image data
   textureData.RowPitch = imageBytesPerRow; // size of all our triangle vertex data
   textureData.SlicePitch = imageBytesPerRow * textureDesc.Height; // also the size of our triangle vertex data
 
   // Now we copy the upload buffer contents to the default heap
-  UpdateSubresources(commandList.Get(), m_textureBuffer.Get(), m_textureBufferUploadHeap.Get(), 0, 0, 1, &textureData);
+  UpdateSubresources(commandList.Get(), m_texture_buffer_.Get(), m_texture_buffer_upload_heap_.Get(), 0, 0, 1, &textureData);
 
   // transition the texture default heap to a pixel shader resource (we will be sampling from this heap in the pixel shader to get the color of pixels)
-  commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_textureBuffer.Get(),
+  commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_texture_buffer_.Get(),
                                                                         D3D12_RESOURCE_STATE_COPY_DEST,
                                                                         D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
@@ -379,7 +380,7 @@ bool ImageRenderer::LoadTexture(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Graph
     heapDesc.NumDescriptors = 1;
     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    hr = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_mainDescriptorHeap[i]));
+    hr = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_main_descriptor_heap_[i]));
     if (FAILED(hr)) {
       Log::Error("Error create descriptor heap in LoadTexture -ERROR:" + std::to_string(hr));
       return false;
@@ -391,8 +392,8 @@ bool ImageRenderer::LoadTexture(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Graph
     srvDesc.Format = textureDesc.Format;
     srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
     srvDesc.Texture2D.MipLevels = 1;
-    device->CreateShaderResourceView(m_textureBuffer.Get(), &srvDesc,
-                                     m_mainDescriptorHeap[i]->GetCPUDescriptorHandleForHeapStart());
+    device->CreateShaderResourceView(m_texture_buffer_.Get(), &srvDesc,
+                                     m_main_descriptor_heap_[i]->GetCPUDescriptorHandleForHeapStart());
 
   }
 

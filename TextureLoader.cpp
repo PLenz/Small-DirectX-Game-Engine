@@ -2,8 +2,8 @@
 #include "TextureLoader.h"
 
 
-int TextureLoader::LoadImageDataFromFile(BYTE** imageData, D3D12_RESOURCE_DESC& resourceDescription, LPCWSTR filename,
-                                         int& bytesPerRow) {
+int TextureLoader::LoadImageDataFromFile(BYTE** pp_image_data, D3D12_RESOURCE_DESC& resource_description, LPCWSTR filename,
+                                         int& bytes_per_row) {
   HRESULT hr;
 
   // reset decoder, frame and converter since these will be different for each image we load
@@ -97,43 +97,43 @@ int TextureLoader::LoadImageDataFromFile(BYTE** imageData, D3D12_RESOURCE_DESC& 
   }
 
   int bitsPerPixel = GetDXGIFormatBitsPerPixel(dxgiFormat); // number of bits per pixel
-  bytesPerRow = (textureWidth * bitsPerPixel) / 8; // number of bytes in each row of the image data
-  int imageSize = bytesPerRow * textureHeight; // total image size in bytes
+  bytes_per_row = (textureWidth * bitsPerPixel) / 8; // number of bytes in each row of the image data
+  int imageSize = bytes_per_row * textureHeight; // total image size in bytes
 
-  // allocate enough memory for the raw image data, and set imageData to point to that memory
-  *imageData = (BYTE*)malloc(imageSize);
+  // allocate enough memory for the raw image data, and set pp_image_data to point to that memory
+  *pp_image_data = (BYTE*)malloc(imageSize);
 
-  // copy (decoded) raw image data into the newly allocated memory (imageData)
+  // copy (decoded) raw image data into the newly allocated memory (pp_image_data)
   if (imageConverted) {
     // if image format needed to be converted, the wic converter will contain the converted image
-    hr = wicConverter->CopyPixels(nullptr, bytesPerRow, imageSize, *imageData);
+    hr = wicConverter->CopyPixels(nullptr, bytes_per_row, imageSize, *pp_image_data);
     if (FAILED(hr))
       return 0;
   } else {
     // no need to convert, just copy data from the wic frame
-    hr = wicFrame->CopyPixels(nullptr, bytesPerRow, imageSize, *imageData);
+    hr = wicFrame->CopyPixels(nullptr, bytes_per_row, imageSize, *pp_image_data);
     if (FAILED(hr))
       return 0;
   }
 
   // now describe the texture with the information we have obtained from the image
-  resourceDescription = {};
-  resourceDescription.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-  resourceDescription.Alignment = 0;
+  resource_description = {};
+  resource_description.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+  resource_description.Alignment = 0;
   // may be 0, 4KB, 64KB, or 4MB. 0 will let runtime decide between 64KB and 4MB (4MB for multi-sampled textures)
-  resourceDescription.Width = textureWidth; // width of the texture
-  resourceDescription.Height = textureHeight; // height of the texture
-  resourceDescription.DepthOrArraySize = 1;
+  resource_description.Width = textureWidth; // width of the texture
+  resource_description.Height = textureHeight; // height of the texture
+  resource_description.DepthOrArraySize = 1;
   // if 3d image, depth of 3d image. Otherwise an array of 1D or 2D textures (we only have one image, so we set 1)
-  resourceDescription.MipLevels = 0;
+  resource_description.MipLevels = 0;
   // Number of mipmaps. We are not generating default mipmaps for this texture, so 0
-  resourceDescription.Format = dxgiFormat; // This is the dxgi format of the image (format of the pixels)
-  resourceDescription.SampleDesc.Count = 1; // This is the number of samples per pixel, we just want 1 sample
-  resourceDescription.SampleDesc.Quality = 0;
+  resource_description.Format = dxgiFormat; // This is the dxgi format of the image (format of the pixels)
+  resource_description.SampleDesc.Count = 1; // This is the number of samples per pixel, we just want 1 sample
+  resource_description.SampleDesc.Quality = 0;
   // The quality level of the samples. Higher is better quality, but worse performance
-  resourceDescription.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+  resource_description.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
   // The arrangement of the pixels. Setting to unknown lets the driver choose the most efficient one
-  resourceDescription.Flags = D3D12_RESOURCE_FLAG_NONE; // no flags
+  resource_description.Flags = D3D12_RESOURCE_FLAG_NONE; // no flags
 
   // return the size of the image. remember to delete the image once your done with it (in this tutorial once its uploaded to the gpu)
   return imageSize;
@@ -141,36 +141,36 @@ int TextureLoader::LoadImageDataFromFile(BYTE** imageData, D3D12_RESOURCE_DESC& 
 
 
 // get the dxgi format equivilent of a wic format
-DXGI_FORMAT TextureLoader::GetDXGIFormatFromWICFormat(WICPixelFormatGUID& wicFormatGUID) {
-  if (wicFormatGUID == GUID_WICPixelFormat128bppRGBAFloat)
+DXGI_FORMAT TextureLoader::GetDXGIFormatFromWICFormat(WICPixelFormatGUID& wic_format_guid) {
+  if (wic_format_guid == GUID_WICPixelFormat128bppRGBAFloat)
     return DXGI_FORMAT_R32G32B32A32_FLOAT;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppRGBAHalf)
+  if (wic_format_guid == GUID_WICPixelFormat64bppRGBAHalf)
     return DXGI_FORMAT_R16G16B16A16_FLOAT;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppRGBA)
+  if (wic_format_guid == GUID_WICPixelFormat64bppRGBA)
     return DXGI_FORMAT_R16G16B16A16_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppRGBA)
+  if (wic_format_guid == GUID_WICPixelFormat32bppRGBA)
     return DXGI_FORMAT_R8G8B8A8_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppBGRA)
+  if (wic_format_guid == GUID_WICPixelFormat32bppBGRA)
     return DXGI_FORMAT_B8G8R8A8_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppBGR)
+  if (wic_format_guid == GUID_WICPixelFormat32bppBGR)
     return DXGI_FORMAT_B8G8R8X8_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppRGBA1010102XR)
+  if (wic_format_guid == GUID_WICPixelFormat32bppRGBA1010102XR)
     return DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppRGBA1010102)
+  if (wic_format_guid == GUID_WICPixelFormat32bppRGBA1010102)
     return DXGI_FORMAT_R10G10B10A2_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat16bppBGRA5551)
+  if (wic_format_guid == GUID_WICPixelFormat16bppBGRA5551)
     return DXGI_FORMAT_B5G5R5A1_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat16bppBGR565)
+  if (wic_format_guid == GUID_WICPixelFormat16bppBGR565)
     return DXGI_FORMAT_B5G6R5_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppGrayFloat)
+  if (wic_format_guid == GUID_WICPixelFormat32bppGrayFloat)
     return DXGI_FORMAT_R32_FLOAT;
-  if (wicFormatGUID == GUID_WICPixelFormat16bppGrayHalf)
+  if (wic_format_guid == GUID_WICPixelFormat16bppGrayHalf)
     return DXGI_FORMAT_R16_FLOAT;
-  if (wicFormatGUID == GUID_WICPixelFormat16bppGray)
+  if (wic_format_guid == GUID_WICPixelFormat16bppGray)
     return DXGI_FORMAT_R16_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat8bppGray)
+  if (wic_format_guid == GUID_WICPixelFormat8bppGray)
     return DXGI_FORMAT_R8_UNORM;
-  if (wicFormatGUID == GUID_WICPixelFormat8bppAlpha)
+  if (wic_format_guid == GUID_WICPixelFormat8bppAlpha)
     return DXGI_FORMAT_A8_UNORM;
   return DXGI_FORMAT_UNKNOWN;
 
@@ -178,86 +178,86 @@ DXGI_FORMAT TextureLoader::GetDXGIFormatFromWICFormat(WICPixelFormatGUID& wicFor
 
 
 // get a dxgi compatible wic format from another wic format
-WICPixelFormatGUID TextureLoader::GetConvertToWICFormat(WICPixelFormatGUID& wicFormatGUID) {
-  if (wicFormatGUID == GUID_WICPixelFormatBlackWhite)
+WICPixelFormatGUID TextureLoader::GetConvertToWICFormat(WICPixelFormatGUID& wic_format_guid) {
+  if (wic_format_guid == GUID_WICPixelFormatBlackWhite)
     return GUID_WICPixelFormat8bppGray;
-  if (wicFormatGUID == GUID_WICPixelFormat1bppIndexed)
+  if (wic_format_guid == GUID_WICPixelFormat1bppIndexed)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat2bppIndexed)
+  if (wic_format_guid == GUID_WICPixelFormat2bppIndexed)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat4bppIndexed)
+  if (wic_format_guid == GUID_WICPixelFormat4bppIndexed)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat8bppIndexed)
+  if (wic_format_guid == GUID_WICPixelFormat8bppIndexed)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat2bppGray)
+  if (wic_format_guid == GUID_WICPixelFormat2bppGray)
     return GUID_WICPixelFormat8bppGray;
-  if (wicFormatGUID == GUID_WICPixelFormat4bppGray)
+  if (wic_format_guid == GUID_WICPixelFormat4bppGray)
     return GUID_WICPixelFormat8bppGray;
-  if (wicFormatGUID == GUID_WICPixelFormat16bppGrayFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat16bppGrayFixedPoint)
     return GUID_WICPixelFormat16bppGrayHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppGrayFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat32bppGrayFixedPoint)
     return GUID_WICPixelFormat32bppGrayFloat;
-  if (wicFormatGUID == GUID_WICPixelFormat16bppBGR555)
+  if (wic_format_guid == GUID_WICPixelFormat16bppBGR555)
     return GUID_WICPixelFormat16bppBGRA5551;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppBGR101010)
+  if (wic_format_guid == GUID_WICPixelFormat32bppBGR101010)
     return GUID_WICPixelFormat32bppRGBA1010102;
-  if (wicFormatGUID == GUID_WICPixelFormat24bppBGR)
+  if (wic_format_guid == GUID_WICPixelFormat24bppBGR)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat24bppRGB)
+  if (wic_format_guid == GUID_WICPixelFormat24bppRGB)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppPBGRA)
+  if (wic_format_guid == GUID_WICPixelFormat32bppPBGRA)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppPRGBA)
+  if (wic_format_guid == GUID_WICPixelFormat32bppPRGBA)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat48bppRGB)
+  if (wic_format_guid == GUID_WICPixelFormat48bppRGB)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat48bppBGR)
+  if (wic_format_guid == GUID_WICPixelFormat48bppBGR)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppBGRA)
+  if (wic_format_guid == GUID_WICPixelFormat64bppBGRA)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppPRGBA)
+  if (wic_format_guid == GUID_WICPixelFormat64bppPRGBA)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppPBGRA)
+  if (wic_format_guid == GUID_WICPixelFormat64bppPBGRA)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat48bppRGBFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat48bppRGBFixedPoint)
     return GUID_WICPixelFormat64bppRGBAHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat48bppBGRFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat48bppBGRFixedPoint)
     return GUID_WICPixelFormat64bppRGBAHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppRGBAFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat64bppRGBAFixedPoint)
     return GUID_WICPixelFormat64bppRGBAHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppBGRAFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat64bppBGRAFixedPoint)
     return GUID_WICPixelFormat64bppRGBAHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppRGBFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat64bppRGBFixedPoint)
     return GUID_WICPixelFormat64bppRGBAHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppRGBHalf)
+  if (wic_format_guid == GUID_WICPixelFormat64bppRGBHalf)
     return GUID_WICPixelFormat64bppRGBAHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat48bppRGBHalf)
+  if (wic_format_guid == GUID_WICPixelFormat48bppRGBHalf)
     return GUID_WICPixelFormat64bppRGBAHalf;
-  if (wicFormatGUID == GUID_WICPixelFormat128bppPRGBAFloat)
+  if (wic_format_guid == GUID_WICPixelFormat128bppPRGBAFloat)
     return GUID_WICPixelFormat128bppRGBAFloat;
-  if (wicFormatGUID == GUID_WICPixelFormat128bppRGBFloat)
+  if (wic_format_guid == GUID_WICPixelFormat128bppRGBFloat)
     return GUID_WICPixelFormat128bppRGBAFloat;
-  if (wicFormatGUID == GUID_WICPixelFormat128bppRGBAFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat128bppRGBAFixedPoint)
     return GUID_WICPixelFormat128bppRGBAFloat;
-  if (wicFormatGUID == GUID_WICPixelFormat128bppRGBFixedPoint)
+  if (wic_format_guid == GUID_WICPixelFormat128bppRGBFixedPoint)
     return GUID_WICPixelFormat128bppRGBAFloat;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppRGBE)
+  if (wic_format_guid == GUID_WICPixelFormat32bppRGBE)
     return GUID_WICPixelFormat128bppRGBAFloat;
-  if (wicFormatGUID == GUID_WICPixelFormat32bppCMYK)
+  if (wic_format_guid == GUID_WICPixelFormat32bppCMYK)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppCMYK)
+  if (wic_format_guid == GUID_WICPixelFormat64bppCMYK)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat40bppCMYKAlpha)
+  if (wic_format_guid == GUID_WICPixelFormat40bppCMYKAlpha)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat80bppCMYKAlpha)
+  if (wic_format_guid == GUID_WICPixelFormat80bppCMYKAlpha)
     return GUID_WICPixelFormat64bppRGBA;
 
 #if (_WIN32_WINNT >= _WIN32_WINNT_WIN8) || defined(_WIN7_PLATFORM_UPDATE)
-  if (wicFormatGUID == GUID_WICPixelFormat32bppRGB)
+  if (wic_format_guid == GUID_WICPixelFormat32bppRGB)
     return GUID_WICPixelFormat32bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppRGB)
+  if (wic_format_guid == GUID_WICPixelFormat64bppRGB)
     return GUID_WICPixelFormat64bppRGBA;
-  if (wicFormatGUID == GUID_WICPixelFormat64bppPRGBAHalf)
+  if (wic_format_guid == GUID_WICPixelFormat64bppPRGBAHalf)
     return GUID_WICPixelFormat64bppRGBAHalf;
 #endif
   return GUID_WICPixelFormatDontCare;
@@ -265,40 +265,38 @@ WICPixelFormatGUID TextureLoader::GetConvertToWICFormat(WICPixelFormatGUID& wicF
 
 
 // get the number of bits per pixel for a dxgi format
-int TextureLoader::GetDXGIFormatBitsPerPixel(DXGI_FORMAT& dxgiFormat) {
-  if (dxgiFormat == DXGI_FORMAT_R32G32B32A32_FLOAT)
+int TextureLoader::GetDXGIFormatBitsPerPixel(DXGI_FORMAT& dxgi_format) {
+  if (dxgi_format == DXGI_FORMAT_R32G32B32A32_FLOAT)
     return 128;
-  if (dxgiFormat == DXGI_FORMAT_R16G16B16A16_FLOAT)
+  if (dxgi_format == DXGI_FORMAT_R16G16B16A16_FLOAT)
     return 64;
-  if (dxgiFormat == DXGI_FORMAT_R16G16B16A16_UNORM)
+  if (dxgi_format == DXGI_FORMAT_R16G16B16A16_UNORM)
     return 64;
-  if (dxgiFormat == DXGI_FORMAT_R8G8B8A8_UNORM)
+  if (dxgi_format == DXGI_FORMAT_R8G8B8A8_UNORM)
     return 32;
-  if (dxgiFormat == DXGI_FORMAT_B8G8R8A8_UNORM)
+  if (dxgi_format == DXGI_FORMAT_B8G8R8A8_UNORM)
     return 32;
-  if (dxgiFormat == DXGI_FORMAT_B8G8R8X8_UNORM)
+  if (dxgi_format == DXGI_FORMAT_B8G8R8X8_UNORM)
     return 32;
-  if (dxgiFormat == DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM)
+  if (dxgi_format == DXGI_FORMAT_R10G10B10_XR_BIAS_A2_UNORM)
     return 32;
-  if (dxgiFormat == DXGI_FORMAT_R10G10B10A2_UNORM)
+  if (dxgi_format == DXGI_FORMAT_R10G10B10A2_UNORM)
     return 32;
+  if (dxgi_format == DXGI_FORMAT_B5G5R5A1_UNORM)
+    return 16;
+  if (dxgi_format == DXGI_FORMAT_B5G6R5_UNORM)
+    return 16;
   else {
-    if (dxgiFormat == DXGI_FORMAT_B5G5R5A1_UNORM)
+    if (dxgi_format == DXGI_FORMAT_R32_FLOAT)
+      return 32;
+    if (dxgi_format == DXGI_FORMAT_R16_FLOAT)
       return 16;
-    if (dxgiFormat == DXGI_FORMAT_B5G6R5_UNORM)
+    if (dxgi_format == DXGI_FORMAT_R16_UNORM)
       return 16;
-    else {
-      if (dxgiFormat == DXGI_FORMAT_R32_FLOAT)
-        return 32;
-      if (dxgiFormat == DXGI_FORMAT_R16_FLOAT)
-        return 16;
-      if (dxgiFormat == DXGI_FORMAT_R16_UNORM)
-        return 16;
-      if (dxgiFormat == DXGI_FORMAT_R8_UNORM)
-        return 8;
-      if (dxgiFormat == DXGI_FORMAT_A8_UNORM)
-        return 8;
-    }
+    if (dxgi_format == DXGI_FORMAT_R8_UNORM)
+      return 8;
+    if (dxgi_format == DXGI_FORMAT_A8_UNORM)
+      return 8;
   }
 
 }

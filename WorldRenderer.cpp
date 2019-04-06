@@ -13,8 +13,8 @@ bool WorldRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int width,
   // Wird einmalig beim Start aufgerufen.
 
   // init viewport and scissorRect with default values
-  m_viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
-  m_scissorRect = CD3DX12_RECT(0, 0, static_cast<float>(width), static_cast<float>(height));
+  m_viewport_ = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height));
+  m_scissor_rect_ = CD3DX12_RECT(0, 0, static_cast<float>(width), static_cast<float>(height));
 
   // create empty root signature
   if (!this->CreateRootSignature(device)) {
@@ -42,7 +42,7 @@ bool WorldRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int width,
   D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {}; // a structure to define a pso
 
   psoDesc.InputLayout = {inputElementDescs, _countof(inputElementDescs)}; // The format of your vertex structure
-  psoDesc.pRootSignature = m_rootSignature.Get();
+  psoDesc.pRootSignature = m_root_signature_.Get();
   // A root signature is basically a parameter list of data that the shader functions expect. The shaders must be compatible with the Root Signature.
   psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
   // A D3D12_SHADER_BYTECODE structure that describes the vertex shader.
@@ -75,7 +75,7 @@ bool WorldRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int width,
 
 
 bool WorldRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                  ComPtr<ID3D12CommandAllocator>& commandAllocator, int width, int height) {
+                                   ComPtr<ID3D12CommandAllocator>& command_allocator, int width, int height) {
 
   vector<vector<int>> levelLayout = LevelLoader::Load("models/Level2.txt");
   for (float line = 0; line < levelLayout.size(); ++line) {
@@ -86,16 +86,16 @@ bool WorldRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Gra
 
       switch (levelLayout[col][line]) {
         case 0:
-          m_models.push_back(Model(L"models/Wall.obj", L"models/Bake_Wall.png", position, rotation, true));
+          m_models_.push_back(Model(L"models/Wall.obj", L"models/Bake_Wall.png", position, rotation, true));
           break;
         case 1:
-          m_models.push_back(Model(L"models/Floor.obj", L"models/Bake_Floor.png", position, rotation, false));
+          m_models_.push_back(Model(L"models/Floor.obj", L"models/Bake_Floor.png", position, rotation, false));
           break;
         case 2:
           XMFLOAT4 rotat;
           XMStoreFloat4(&rotat, XMQuaternionRotationAxis(XMLoadFloat3(new XMFLOAT3(0.0f, 1.0f, 0.0f)), 0.25f * XM_PI));
-          m_models.push_back(Model(L"models/Floor.obj", L"models/Bake_Floor.png", position, rotation, false));
-          m_models.push_back(Model(L"models/Barrier.obj", L"models/Bake_Barrier.png", position, rotat, true));
+          m_models_.push_back(Model(L"models/Floor.obj", L"models/Bake_Floor.png", position, rotation, false));
+          m_models_.push_back(Model(L"models/Barrier.obj", L"models/Bake_Barrier.png", position, rotat, true));
           break;
         default:
           Log::Error("No object for level found! Object number" + levelLayout[col][line]);
@@ -106,14 +106,14 @@ bool WorldRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Gra
 
   HRESULT hr;
   // Wird einmalig beim Start aufgerufen.
-  hr = commandAllocator->Reset();
+  hr = command_allocator->Reset();
   if (FAILED(hr)) {
-    Log::Error("Error commandAllocator->Reset() -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_allocator->Reset() -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // Reset the command list
-  hr = commandList->Reset(commandAllocator.Get(), m_pipelineState.Get());
+  hr = commandList->Reset(command_allocator.Get(), m_pipeline_state_.Get());
   if (FAILED(hr)) {
     Log::Error("Error commandList->Reset -ERROR:" + std::to_string(hr));
     return false;
@@ -131,11 +131,11 @@ bool WorldRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Gra
     return false;
   }
 
-  for (size_t modelIndex = 0; modelIndex < m_models.size(); ++modelIndex) {
-    m_models[modelIndex].LoadResources(
+  for (size_t modelIndex = 0; modelIndex < m_models_.size(); ++modelIndex) {
+    m_models_[modelIndex].LoadResources(
       device,
       commandList,
-      commandAllocator
+      command_allocator
     );
   }
 
@@ -148,75 +148,76 @@ bool WorldRenderer::LoadResources(ComPtr<ID3D12Device>& device, ComPtr<ID3D12Gra
 }
 
 
-bool WorldRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& commandList,
-                                        ComPtr<ID3D12CommandAllocator>& commandAllocator,
-                                        CD3DX12_CPU_DESCRIPTOR_HANDLE& rtvHandle, ComPtr<ID3D12Resource>& renderTarget,
-                                        int frameIndex) {
+bool WorldRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& command_list,
+                                          ComPtr<ID3D12CommandAllocator>& command_allocator,
+                                          CD3DX12_CPU_DESCRIPTOR_HANDLE& rtv_handle,
+                                          ComPtr<ID3D12Resource>& render_target,
+                                          int frameIndex) {
   // Wird mit jedem Frame aufgerufen.
   // we can only reset an allocator once the gpu is done with it
   // resetting an allocator frees the memory that the command list was stored in
-  HRESULT hr = commandAllocator->Reset();
+  HRESULT hr = command_allocator->Reset();
   if (FAILED(hr)) {
-    Log::Error("Error commandAllocator->Reset() -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_allocator->Reset() -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // Reset the command list
-  hr = commandList->Reset(commandAllocator.Get(), m_pipelineState.Get());
+  hr = command_list->Reset(command_allocator.Get(), m_pipeline_state_.Get());
   if (FAILED(hr)) {
-    Log::Error("Error commandList->Reset -ERROR:" + std::to_string(hr));
+    Log::Error("Error command_list->Reset -ERROR:" + std::to_string(hr));
     return false;
   }
 
   // cullABB & reload released Meshes after reset.
   std::vector<Model*> culledModels;
-  cullAABB(culledModels, commandList, commandAllocator);
+  FrustumCulling(culledModels, command_list, command_allocator);
 
-  commandList->SetGraphicsRootSignature(m_rootSignature.Get()); // set the root signature
-  commandList->RSSetViewports(1, &m_viewport); // set the viewports
-  commandList->RSSetScissorRects(1, &m_scissorRect); // set the scissor rects
-  // here we start recording commands into the commandList (which all the commands will be stored in the commandAllocator)
+  command_list->SetGraphicsRootSignature(m_root_signature_.Get()); // set the root signature
+  command_list->RSSetViewports(1, &m_viewport_); // set the viewports
+  command_list->RSSetScissorRects(1, &m_scissor_rect_); // set the scissor rects
+  // here we start recording commands into the command_list (which all the commands will be stored in the command_allocator)
 
   // transition the "frameIndex" render target from the present state to the render target state so the command list draws to it starting from here
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_PRESENT,
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_PRESENT,
                                              D3D12_RESOURCE_STATE_RENDER_TARGET));
 
   // set the render target for the output merger stage (the output of the pipeline)
   // get a handle to the depth/stencil buffer
-  CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+  CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(m_depth_stencil_descriptor_heap_->GetCPUDescriptorHandleForHeapStart());
 
   // set the render target for the output merger stage (the output of the pipeline)
-  commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, &dsvHandle);
+  command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &dsvHandle);
 
   // Clear the render target by using the ClearRenderTargetView command
   const float clearColor[] = THM_GREY;
-  commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+  command_list->ClearRenderTargetView(rtv_handle, clearColor, 0, nullptr);
 
   // clear the depth/stencil buffer
-  commandList->ClearDepthStencilView(m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+  command_list->ClearDepthStencilView(m_depth_stencil_descriptor_heap_->GetCPUDescriptorHandleForHeapStart(),
                                      D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
-  commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
+  command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // set the primitive topology
 
   for (size_t modelIndex = 0; modelIndex < culledModels.size(); ++modelIndex) {
-    if (culledModels[modelIndex]->m_reload == true) {
-      culledModels[modelIndex]->m_reload = false;
+    if (culledModels[modelIndex]->m_reload_ == true) {
+      culledModels[modelIndex]->m_reload_ = false;
     } else {
       culledModels[modelIndex]->PopulateCommandList(
-        commandList,
-        m_constantBufferGPUAddress[frameIndex] + offset * modelIndex,
-        m_constantBufferUploadHeap[frameIndex]->GetGPUVirtualAddress() + offset * modelIndex
+        command_list,
+        p_constant_buffer_gpu_address_[frameIndex] + offset * modelIndex,
+        m_constant_buffer_upload_heap_[frameIndex]->GetGPUVirtualAddress() + offset * modelIndex
       );
     }
   }
 
   // transition the "frameIndex" render target from the render target state to the present state. If the debug layer is enabled, you will receive a
   // warning if present is called on the render target when it's not in the present state
-  commandList->ResourceBarrier(
-    1, &CD3DX12_RESOURCE_BARRIER::Transition(renderTarget.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
+  command_list->ResourceBarrier(
+    1, &CD3DX12_RESOURCE_BARRIER::Transition(render_target.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
                                              D3D12_RESOURCE_STATE_PRESENT));
 
-  hr = commandList->Close();
+  hr = command_list->Close();
   if (FAILED(hr)) {
     Log::Error("Error close command list -ERROR:" + std::to_string(hr));
     return false;
@@ -225,17 +226,17 @@ bool WorldRenderer::PopulateCommandList(ComPtr<ID3D12GraphicsCommandList>& comma
 }
 
 
-void WorldRenderer::Update(int frameIndex, double delta) {
-  for (size_t modelIndex = 0; modelIndex < m_models.size(); ++modelIndex) {
-    m_models[modelIndex].Update(delta);
+void WorldRenderer::Update(int frame_index, double delta) {
+  for (size_t modelIndex = 0; modelIndex < m_models_.size(); ++modelIndex) {
+    m_models_[modelIndex].Update(delta);
   }
   Camera::Update(delta);
 }
 
 
-bool WorldRenderer::Intersects(BoundingVolume& cameraBounds, XMFLOAT3& resolution) {
-  for (int i = 0; i < m_models.size(); i++) {
-    if (m_models[i].Intersects(cameraBounds, resolution)) {
+bool WorldRenderer::Intersects(BoundingVolume& camera, XMFLOAT3& resolution) {
+  for (int i = 0; i < m_models_.size(); i++) {
+    if (m_models_[i].Intersects(camera, resolution)) {
       return true;
     }
   }
@@ -325,8 +326,8 @@ bool WorldRenderer::CreateRootSignature(ComPtr<ID3D12Device>& device) {
 }
 
 
-bool WorldRenderer::CompileShaders(ComPtr<ID3DBlob>& vertexShader, LPCSTR entryPointVertexShader,
-                                   ComPtr<ID3D10Blob>& pixelShader, LPCSTR entryPointPixelShader) {
+bool WorldRenderer::CompileShaders(ComPtr<ID3DBlob>& vertex_shader, LPCSTR entry_point_vertex_shader,
+                                   ComPtr<ID3D10Blob>& pixel_shader, LPCSTR entry_point_pixel_shader) {
   // Sollte einmalig genutzt werden bevor das PSO gesetzt wird.
 #if defined(_DEBUG)
   // Enable better shader debugging with the graphics debugging tools.
@@ -335,15 +336,15 @@ bool WorldRenderer::CompileShaders(ComPtr<ID3DBlob>& vertexShader, LPCSTR entryP
         UINT compileFlags = 0;
 #endif
 
-  HRESULT hr = D3DCompileFromFile(L"vertexShader.hlsl", nullptr, nullptr, entryPointVertexShader, "vs_5_0",
-                                  compileFlags, 0, &vertexShader, nullptr);
+  HRESULT hr = D3DCompileFromFile(L"vertex_shader.hlsl", nullptr, nullptr, entry_point_vertex_shader, "vs_5_0",
+                                  compileFlags, 0, &vertex_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile vertex shader -ERROR:" + std::to_string(hr));
     return false;
   }
 
-  hr = D3DCompileFromFile(L"pixelShader.hlsl", nullptr, nullptr, entryPointPixelShader, "ps_5_0", compileFlags, 0,
-                          &pixelShader, nullptr);
+  hr = D3DCompileFromFile(L"pixel_shader.hlsl", nullptr, nullptr, entry_point_pixel_shader, "ps_5_0", compileFlags, 0,
+                          &pixel_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile pixel shader -ERROR:" + std::to_string(hr));
     return false;
@@ -353,7 +354,7 @@ bool WorldRenderer::CompileShaders(ComPtr<ID3DBlob>& vertexShader, LPCSTR entryP
 
 
 bool WorldRenderer::CreateDepthStencilBuffer(ComPtr<ID3D12Device>& device,
-                                             ComPtr<ID3D12GraphicsCommandList>& commandList, int width, int height) {
+                                             ComPtr<ID3D12GraphicsCommandList>& command_list, int width, int height) {
   HRESULT hr;
   // create a depth stencil descriptor heap so we can get a pointer to the depth stencil buffer
   D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
@@ -386,10 +387,10 @@ bool WorldRenderer::CreateDepthStencilBuffer(ComPtr<ID3D12Device>& device,
     &depthOptimizedClearValue,
     IID_PPV_ARGS(&m_depthStencilBuffer)
   );
-  m_depthStencilDescriptorHeap->SetName(L"Depth/Stencil Resource Heap");
+  m_depth_stencil_descriptor_heap_->SetName(L"Depth/Stencil Resource Heap");
 
-  device->CreateDepthStencilView(m_depthStencilBuffer.Get(), &depthStencilDesc,
-                                 m_depthStencilDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+  device->CreateDepthStencilView(m_depth_stencil_buffer_.Get(), &depthStencilDesc,
+                                 m_depth_stencil_descriptor_heap_->GetCPUDescriptorHandleForHeapStart());
 
   return true;
 }
@@ -412,7 +413,7 @@ bool WorldRenderer::CreateConstantBuffer(ComPtr<ID3D12Device>& device) {
   }
 
   // create the constant buffer resource heap
-  // We will update the constant buffer one or more times per frame, so we will use only an upload heap
+  // We will Update the constant buffer one or more times per frame, so we will use only an upload heap
   // unlike previously we used an upload heap to upload the vertex and index data, and then copied over
   // to a default heap. If you plan to use a resource for more than a couple frames, it is usually more
   // efficient to copy to a default heap where it stays on the gpu. In this case, our constant buffer
@@ -428,26 +429,26 @@ bool WorldRenderer::CreateConstantBuffer(ComPtr<ID3D12Device>& device) {
       D3D12_RESOURCE_STATE_GENERIC_READ, // will be data that is read from so we keep it in the generic read state
       nullptr, // we do not have use an optimized clear value for constant buffers
       IID_PPV_ARGS(&m_constantBufferUploadHeap[i]));
-    m_constantBufferUploadHeap[i]->SetName(L"Constant Buffer Upload Resource Heap");
+    m_constant_buffer_upload_heap_[i]->SetName(L"Constant Buffer Upload Resource Heap");
 
     D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};
-    cbvDesc.BufferLocation = m_constantBufferUploadHeap[i]->GetGPUVirtualAddress();
+    cbvDesc.BufferLocation = m_constant_buffer_upload_heap_[i]->GetGPUVirtualAddress();
     cbvDesc.SizeInBytes = offset; // CB size is required to be 256-byte aligned.
-    device->CreateConstantBufferView(&cbvDesc, m_constantBufferDescriptorHeap[i]->GetCPUDescriptorHandleForHeapStart());
+    device->CreateConstantBufferView(&cbvDesc, m_constant_buffer_descriptor_heap_[i]->GetCPUDescriptorHandleForHeapStart());
 
     CD3DX12_RANGE readRange(0, 0);
     // We do not intend to read from this resource on the CPU. (End is less than or equal to begin)
-    hr = m_constantBufferUploadHeap[i]->Map(0, &readRange, reinterpret_cast<void**>(&m_constantBufferGPUAddress[i]));
-    memcpy(m_constantBufferGPUAddress[i], &m_constantBufferGPUAddress, sizeof(m_constantBufferGPUAddress));
+    hr = m_constant_buffer_upload_heap_[i]->Map(0, &readRange, reinterpret_cast<void**>(&p_constant_buffer_gpu_address_[i]));
+    memcpy(p_constant_buffer_gpu_address_[i], &p_constant_buffer_gpu_address_, sizeof(p_constant_buffer_gpu_address_));
   }
   return true;
 }
 
 
-bool WorldRenderer::cullAABB(std::vector<Model*>& culledModels, ComPtr<ID3D12GraphicsCommandList>& commandList,
-                             ComPtr<ID3D12CommandAllocator>& commandAllocator) {
+bool WorldRenderer::FrustumCulling(std::vector<Model*>& culled_models, ComPtr<ID3D12GraphicsCommandList>& command_list,
+                             ComPtr<ID3D12CommandAllocator>& command_allocator) {
   BoundingVolume* frustrum;
-  Camera::getFrustum(frustrum);
+  Camera::GetFrustum(frustrum);
   XMFLOAT3 pos = Camera::GetCameraPosition();
   float pitch = Camera::GetPitch();
   float yaw = Camera::GetYaw();
@@ -459,29 +460,29 @@ bool WorldRenderer::cullAABB(std::vector<Model*>& culledModels, ComPtr<ID3D12Gra
 
   frustrum->Update(&pos, &rot);
 
-  int oldElementsToDraw = numElementsToDraw;
-  numElementsToDraw = 0;
-  numMeshesToDraw = 0;
+  int oldElementsToDraw = m_num_elements_to_draw_;
+  m_num_elements_to_draw_ = 0;
+  m_num_meshes_to_draw_ = 0;
   std::map<Mesh*, bool> meshAmountTable;
 
-  for (int i = 0; i < m_models.size(); ++i) {
-    bool cull = m_models[i].CheckCull(frustrum);
-    m_models[i].SetCull(cull, commandList, commandAllocator);
+  for (int i = 0; i < m_models_.size(); ++i) {
+    bool cull = m_models_[i].CheckCull(frustrum);
+    m_models_[i].SetCull(cull, command_list, command_allocator);
     if (cull) {
-      culledModels.push_back(&m_models[i]);
-      numElementsToDraw++;
-      Mesh* mesh = m_models[i].GetMesh();
+      culled_models.push_back(&m_models_[i]);
+      m_num_elements_to_draw_++;
+      Mesh* mesh = m_models_[i].GetMesh();
       if (meshAmountTable.find(mesh) == meshAmountTable.end()) {
         meshAmountTable[mesh] = true;
-        numMeshesToDraw++;
+        m_num_meshes_to_draw_++;
       }
     }
   }
-  if (oldElementsToDraw != numElementsToDraw) {
-    Log::Info("Total amount of Models: " + std::to_string(m_models.size()));
-    Log::Info("Currently rendered Models: " + std::to_string(numElementsToDraw));
+  if (oldElementsToDraw != m_num_elements_to_draw_) {
+    Log::Info("Total amount of Models: " + std::to_string(m_models_.size()));
+    Log::Info("Currently rendered Models: " + std::to_string(m_num_elements_to_draw_));
     Log::Info("Total amount of Meshes: " + std::to_string(MeshCache::GetMeshTableSize()));
-    Log::Info("Currently rendered Meshes: " + std::to_string(numMeshesToDraw));
+    Log::Info("Currently rendered Meshes: " + std::to_string(m_num_meshes_to_draw_));
   }
 
   return true;
@@ -490,19 +491,19 @@ bool WorldRenderer::cullAABB(std::vector<Model*>& culledModels, ComPtr<ID3D12Gra
 
 void WorldRenderer::Release() {
 
-  m_rootSignature.Reset();
-  m_pipelineState.Reset();
-  m_depthStencilBuffer.Reset();
-  m_depthStencilDescriptorHeap.Reset();
+  m_root_signature_.Reset();
+  m_pipeline_state_.Reset();
+  m_depth_stencil_buffer_.Reset();
+  m_depth_stencil_descriptor_heap_.Reset();
 
   for (size_t i = 0; i < DXGE_FRAME_COUNT; i++) {
-    m_constantBufferUploadHeap[i].Reset();
+    m_constant_buffer_upload_heap_[i].Reset();
   }
 
-  for (size_t modelIndex = 0; modelIndex < m_models.size(); ++modelIndex) {
-    m_models[modelIndex].Unload();
-    if (modelIndex == m_models.size() - 1) {
-      m_models[modelIndex].Release();
+  for (size_t modelIndex = 0; modelIndex < m_models_.size(); ++modelIndex) {
+    m_models_[modelIndex].Unload();
+    if (modelIndex == m_models_.size() - 1) {
+      m_models_[modelIndex].Release();
     }
   }
 

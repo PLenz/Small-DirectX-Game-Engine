@@ -10,8 +10,8 @@ public:
   static void SetAspectRatio(int, int);
   static void SetCameraPosition(XMFLOAT3 position);
   static XMFLOAT3 GetCameraPosition();
-  static void getFrustum(BoundingVolume*& bv);
-  static void Setup(Renderer* m_renderer);
+  static void GetFrustum(BoundingVolume*& bounding_volume);
+  static void Setup(Renderer* renderer);
   static float Camera::GetPitch();
   static float Camera::GetYaw();
 
@@ -22,7 +22,7 @@ private:
   ~Camera() {};
 
 
-  static Renderer* m_renderer;
-  static BoundingVolume m_boundingCamera;
-  static BoundingVolume* m_boundingFrustum;
+  static Renderer* p_renderer_;
+  static BoundingVolume m_bounding_camera_;
+  static BoundingVolume* m_bounding_frustum_;
 };

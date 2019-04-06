@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #pragma once
 #include "graphics.h"
-#include "renderer.h"
+#include "Renderer.h"
 #include "DeviceManager.h"
 #include "TriangleRenderer.h"
 #include "QuadRenderer.h"
@@ -12,78 +12,78 @@
 Renderer* m_renderer;
 
 
-bool Graphics::Init(HWND hwnd, int width, int height, int vertCount, Renderer* r) {
-  if (!m_loaded) {
+bool Graphics::Init(HWND hwnd, int width, int height, int vert_count, Renderer* renderer) {
+  if (!m_loaded_) {
     //First time initialization
-    m_renderer = r;
+    p_renderer_ = renderer;
 
     //Call DeviceManager Methods to initialize Direct3D
     //In case of errors, use Error Logging and return false
 
     // Create Device
-    if (!DeviceManager::CreateDevice(m_device, m_factory)) {
+    if (!DeviceManager::CreateDevice(m_device_, m_factory_)) {
       Log::Error("Error on creating device");
       return false;
     }
 
     // Create Command Queue
-    if (!DeviceManager::CreateComandQueue(m_device, m_commandQueue, m_commandAllocator, m_commandList, m_fence,
-                                          m_fenceEvent, m_fenceValue)) {
+    if (!DeviceManager::CreateComandQueue(m_device_, m_command_queue_, m_command_allocator_, m_command_list_, m_fence_,
+                                            m_fence_event_, m_fence_value_)) {
       Log::Error("Error on creating command queue");
       return false;
     }
 
     // Create Swap Chain
-    if (!DeviceManager::CreateSwapChain(hwnd, m_factory, m_commandQueue, width, height, m_swapChain, m_frameIndex)) {
+    if (!DeviceManager::CreateSwapChain(hwnd, m_factory_, m_command_queue_, width, height, m_swap_chain_, m_frame_index_)) {
       Log::Error("Error on creating swap chain");
       return false;
     }
 
     // Create Render Target
-    if (!DeviceManager::CreateRenderTargets(m_device, m_swapChain, m_renderTargets, m_rtvHeap, m_rtvDescriptorSize)) {
+    if (!DeviceManager::CreateRenderTargets(m_device_, m_swap_chain_, m_render_targets_, m_rtv_heap_, m_rtv_descriptor_size_)) {
       Log::Error("Error on creating render targets");
       return false;
     }
 
-    // m_renderer = new Renderer();
-    // m_renderer = new TriangleRenderer();
-    // m_renderer = new DynTriangleRenderer(vertCount);
-    // m_renderer = new QuadRenderer();
-    // m_renderer = new DepthQuadRenderer();
-    // m_renderer = new WorldRenderer();
+    // p_renderer_ = new Renderer();
+    // p_renderer_ = new TriangleRenderer();
+    // p_renderer_ = new DynTriangleRenderer(vert_count);
+    // p_renderer_ = new QuadRenderer();
+    // p_renderer_ = new DepthQuadRenderer();
+    // p_renderer_ = new WorldRenderer();
 
     // Call Renderer Methods to CreatePipelineState and LoadResources
     // In case of errors, use Error Logging and return false
-    if (!m_renderer->CreatePipelineState(m_device, width, height)) {
+    if (!p_renderer_->CreatePipelineState(m_device_, width, height)) {
       Log::Error("Error on creating pipeline state");
       return false;
     }
 
-    if (!m_renderer->LoadResources(m_device, m_commandList, m_commandAllocator, width, height)) {
+    if (!p_renderer_->LoadResources(m_device_, m_command_list_, m_command_allocator_, width, height)) {
       Log::Error("Error on load resources");
       return false;
     }
 
-    Camera::Setup(m_renderer);
+    Camera::Setup(p_renderer_);
 
     // create an array of command lists (only one command list here)
-    ID3D12CommandList* ppCommandLists[] = {m_commandList.Get()};
+    ID3D12CommandList* ppCommandLists[] = {m_command_list_.Get()};
     // execute the array of command lists
-    m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+    m_command_queue_->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 
     // this command goes in at the end of our command queue. we will know when our command queue 
     // has finished because the fence value will be set to "fenceValue" from the GPU since the command
     // queue is being executed on the GPU
-    const UINT64 fence = m_fenceValue;
-    HRESULT hr = m_commandQueue->Signal(m_fence.Get(), fence);
+    const UINT64 fence = m_fence_value_;
+    HRESULT hr = m_command_queue_->Signal(m_fence_.Get(), fence);
     if (FAILED(hr)) {
       Log::Error("Error on commandQueue->Signal()");
       return false;
     }
-    m_fenceValue++;
+    m_fence_value_++;
     Sync();
-    m_loaded = true;
+    m_loaded_ = true;
 
     return true;
   }
@@ -94,31 +94,31 @@ bool Graphics::Init(HWND hwnd, int width, int height, int vertCount, Renderer* r
 
 
 bool Graphics::Render(double delta) {
-  if (m_loaded) {
+  if (m_loaded_) {
     // Call Update on the renderer
-    m_renderer->Update(m_frameIndex, delta);
+    p_renderer_->Update(m_frame_index_, delta);
     // Get the CPU descriptor handle for RTV and call PopulateCommandList on the renderer
-    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_frameIndex,
-                                            m_rtvDescriptorSize);
-    if (!m_renderer->PopulateCommandList(m_commandList, m_commandAllocator, rtvHandle, m_renderTargets[m_frameIndex],
-                                         m_frameIndex)) {
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtv_heap_->GetCPUDescriptorHandleForHeapStart(), m_frame_index_,
+                                            m_rtv_descriptor_size_);
+    if (!p_renderer_->PopulateCommandList(m_command_list_, m_command_allocator_, rtvHandle, m_render_targets_[m_frame_index_],
+                                           m_frame_index_)) {
       // In case of error, unload and return false
       Release();
       Log::Error("Error calling populate command list");
       return false;
     }
-    // m_commandQueue->ExecuteCommandLists()
-    ID3D12CommandList* ppCommandLists[] = {m_commandList.Get()};
-    m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+    // m_command_queue_->ExecuteCommandLists()
+    ID3D12CommandList* ppCommandLists[] = {m_command_list_.Get()};
+    m_command_queue_->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
-    // m_swapChain->Present(1, 0);
+    // m_swap_chain_->Present(1, 0);
     // if (0,0) no syncronization, if (1,0) uses v-sync
-    HRESULT hr = m_swapChain->Present(1, 0);
+    HRESULT hr = m_swap_chain_->Present(1, 0);
 
-    // IF (FAILED) m_device->GetDeviceRemovedReason()
+    // IF (FAILED) m_device_->GetDeviceRemovedReason()
     if (FAILED(hr)) {
       Log::Error("Error presenting swap chain" + std::to_string(hr));
-      hr = m_device->GetDeviceRemovedReason();
+      hr = m_device_->GetDeviceRemovedReason();
       Log::Error("Device Removed Reason: " + std::to_string(hr));
       return false;
     }
@@ -135,50 +135,50 @@ bool Graphics::Sync() {
   // maximize GPU utilization.
 
   // Signal and increment the fence value.
-  const UINT64 fence = m_fenceValue;
-  HRESULT hr = m_commandQueue->Signal(m_fence.Get(), fence);
+  const UINT64 fence = m_fence_value_;
+  HRESULT hr = m_command_queue_->Signal(m_fence_.Get(), fence);
   if (FAILED(hr))
     return false;
-  m_fenceValue++;
+  m_fence_value_++;
 
   // Wait until the previous frame is finished.
-  if (m_fence->GetCompletedValue() < fence) {
-    hr = m_fence->SetEventOnCompletion(fence, m_fenceEvent);
+  if (m_fence_->GetCompletedValue() < fence) {
+    hr = m_fence_->SetEventOnCompletion(fence, m_fence_event_);
     if (FAILED(hr))
       return false;
-    WaitForSingleObject(m_fenceEvent, INFINITE);
+    WaitForSingleObject(m_fence_event_, INFINITE);
   }
 
-  m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+  m_frame_index_ = m_swap_chain_->GetCurrentBackBufferIndex();
   return true;
 }
 
 
 void Graphics::Release() {
-  m_loaded = false;
+  m_loaded_ = false;
 
   //1: First wait for the GPU to finish all outstanding frames
   for (int i = 0; i < DXGE_FRAME_COUNT; i++) {
-    m_frameIndex = i;
+    m_frame_index_ = i;
     this->Sync();
   }
 
   //2: then call Release on the Renderer
-  m_renderer->Release();
+  p_renderer_->Release();
 
   //3: then free all resources in this class
-  m_factory.Reset();
-  m_device.Reset();
-  m_swapChain.Reset();
-  m_commandQueue.Reset();
-  m_rtvHeap.Reset();
-  m_commandList.Reset();
+  m_factory_.Reset();
+  m_device_.Reset();
+  m_swap_chain_.Reset();
+  m_command_queue_.Reset();
+  m_rtv_heap_.Reset();
+  m_command_list_.Reset();
 
   for (int i = 0; i < DXGE_FRAME_COUNT; i++) {
-    m_renderTargets[i].Reset();
+    m_render_targets_[i].Reset();
   }
 
-  m_commandAllocator.Reset();
-  m_fence.Reset();
-  m_swapChain.Reset();
+  m_command_allocator_.Reset();
+  m_fence_.Reset();
+  m_swap_chain_.Reset();
 }
