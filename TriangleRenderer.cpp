@@ -72,7 +72,7 @@ bool TriangleRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int wid
   // An array of DXGI_FORMAT-typed values for the render target formats.
   psoDesc.SampleDesc.Count = 1; // The number of multisamples per pixel.
 
-  HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState));
+  HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipeline_state_));
   if (FAILED(hr)) {
     Log::Error("Error create graphics pipeline state -ERROR:" + std::to_string(hr));
     return false;
@@ -197,7 +197,7 @@ bool TriangleRenderer::CreateVertexBuffer(ComPtr<ID3D12Device>& device, ComPtr<I
     // from the upload heap to this heap
     nullptr,
     // optimized clear value must be null for this type of resource. used for render targets and depth/stencil buffers
-    IID_PPV_ARGS(&m_vertexBuffer));
+    IID_PPV_ARGS(&m_vertex_buffer_));
 
   // we can give resource heaps a name so when we debug with the graphics debugger we know what resource we are looking at
   m_vertex_buffer_->SetName(L"Vertex Buffer Resource Heap");
@@ -248,14 +248,14 @@ bool TriangleRenderer::CompileShaders(ComPtr<ID3DBlob>& vertex_shader, LPCSTR en
         UINT compileFlags = 0;
 #endif
 
-  HRESULT hr = D3DCompileFromFile(L"vertex_shader.hlsl", nullptr, nullptr, entry_point_vertex_shader, "vs_5_0",
+  HRESULT hr = D3DCompileFromFile(L"vertexShader.hlsl", nullptr, nullptr, entry_point_vertex_shader, "vs_5_0",
                                   compileFlags, 0, &vertex_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile vertex shader -ERROR:" + std::to_string(hr));
     return false;
   }
 
-  hr = D3DCompileFromFile(L"pixel_shader.hlsl", nullptr, nullptr, entry_point_pixel_shader, "ps_5_0", compileFlags, 0,
+  hr = D3DCompileFromFile(L"pixelShader.hlsl", nullptr, nullptr, entry_point_pixel_shader, "ps_5_0", compileFlags, 0,
                           &pixel_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile pixel shader -ERROR:" + std::to_string(hr));
@@ -279,7 +279,7 @@ bool TriangleRenderer::CreateRootSignature(ComPtr<ID3D12Device>& device) {
     return false;
   }
   hr = device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
-                                   IID_PPV_ARGS(&m_rootSignature));
+                                   IID_PPV_ARGS(&m_root_signature_));
   if (FAILED(hr)) {
     Log::Error("Error create root signature -ERROR:" + std::to_string(hr));
     return false;

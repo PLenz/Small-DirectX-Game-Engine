@@ -65,7 +65,7 @@ bool WorldRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int width,
   // An array of DXGI_FORMAT-typed values for the render target formats.
   psoDesc.SampleDesc.Count = 1; // The number of multisamples per pixel.
 
-  HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState));
+  HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipeline_state_));
   if (FAILED(hr)) {
     Log::Error("Error create graphics pipeline state -ERROR:" + std::to_string(hr));
     return false;
@@ -317,7 +317,7 @@ bool WorldRenderer::CreateRootSignature(ComPtr<ID3D12Device>& device) {
   }
 
   hr = device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
-                                   IID_PPV_ARGS(&m_rootSignature));
+                                   IID_PPV_ARGS(&m_root_signature_));
   if (FAILED(hr)) {
     Log::Error("Error create root signature -ERROR:" + std::to_string(hr));
     return false;
@@ -336,14 +336,14 @@ bool WorldRenderer::CompileShaders(ComPtr<ID3DBlob>& vertex_shader, LPCSTR entry
         UINT compileFlags = 0;
 #endif
 
-  HRESULT hr = D3DCompileFromFile(L"vertex_shader.hlsl", nullptr, nullptr, entry_point_vertex_shader, "vs_5_0",
+  HRESULT hr = D3DCompileFromFile(L"vertexShader.hlsl", nullptr, nullptr, entry_point_vertex_shader, "vs_5_0",
                                   compileFlags, 0, &vertex_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile vertex shader -ERROR:" + std::to_string(hr));
     return false;
   }
 
-  hr = D3DCompileFromFile(L"pixel_shader.hlsl", nullptr, nullptr, entry_point_pixel_shader, "ps_5_0", compileFlags, 0,
+  hr = D3DCompileFromFile(L"pixelShader.hlsl", nullptr, nullptr, entry_point_pixel_shader, "ps_5_0", compileFlags, 0,
                           &pixel_shader, nullptr);
   if (FAILED(hr)) {
     Log::Error("Error decompile pixel shader -ERROR:" + std::to_string(hr));
@@ -362,7 +362,7 @@ bool WorldRenderer::CreateDepthStencilBuffer(ComPtr<ID3D12Device>& device,
   dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
   dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
-  hr = device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_depthStencilDescriptorHeap));
+  hr = device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_depth_stencil_descriptor_heap_));
   if (FAILED(hr)) {
     Log::Error("Error creating depth/stencil descriptor heap -ERROR:" + std::to_string(hr));
     return false;
@@ -385,7 +385,7 @@ bool WorldRenderer::CreateDepthStencilBuffer(ComPtr<ID3D12Device>& device,
                                   D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
     D3D12_RESOURCE_STATE_DEPTH_WRITE,
     &depthOptimizedClearValue,
-    IID_PPV_ARGS(&m_depthStencilBuffer)
+    IID_PPV_ARGS(&m_depth_stencil_buffer_)
   );
   m_depth_stencil_descriptor_heap_->SetName(L"Depth/Stencil Resource Heap");
 
@@ -405,7 +405,7 @@ bool WorldRenderer::CreateConstantBuffer(ComPtr<ID3D12Device>& device) {
     heapDesc.NumDescriptors = 1;
     heapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
     heapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-    hr = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_constantBufferDescriptorHeap[i]));
+    hr = device->CreateDescriptorHeap(&heapDesc, IID_PPV_ARGS(&m_constant_buffer_descriptor_heap_[i]));
     if (FAILED(hr)) {
       Log::Error("Error create constant buffer heap -ERROR:" + std::to_string(hr));
       return false;
@@ -428,7 +428,7 @@ bool WorldRenderer::CreateConstantBuffer(ComPtr<ID3D12Device>& device) {
       // size of the resource heap. Must be a multiple of 64KB for single-textures and constant buffers
       D3D12_RESOURCE_STATE_GENERIC_READ, // will be data that is read from so we keep it in the generic read state
       nullptr, // we do not have use an optimized clear value for constant buffers
-      IID_PPV_ARGS(&m_constantBufferUploadHeap[i]));
+      IID_PPV_ARGS(&m_constant_buffer_upload_heap_[i]));
     m_constant_buffer_upload_heap_[i]->SetName(L"Constant Buffer Upload Resource Heap");
 
     D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc = {};

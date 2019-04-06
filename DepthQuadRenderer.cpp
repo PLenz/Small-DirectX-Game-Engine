@@ -58,7 +58,7 @@ bool DepthQuadRenderer::CreatePipelineState(ComPtr<ID3D12Device>& device, int wi
   // An array of DXGI_FORMAT-typed values for the render target formats.
   psoDesc.SampleDesc.Count = 1; // The number of multisamples per pixel.
 
-  HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState));
+  HRESULT hr = device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipeline_state_));
   if (FAILED(hr)) {
     Log::Error("Error create graphics pipeline state -ERROR:" + std::to_string(hr));
     return false;
@@ -185,7 +185,7 @@ bool DepthQuadRenderer::CreateRootSignature(ComPtr<ID3D12Device>& device) {
   }
 
   hr = device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
-                                   IID_PPV_ARGS(&m_rootSignature));
+                                   IID_PPV_ARGS(&m_root_signature_));
   if (FAILED(hr)) {
     return false;
   }

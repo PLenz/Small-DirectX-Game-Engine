@@ -45,13 +45,6 @@ bool Graphics::Init(HWND hwnd, int width, int height, int vert_count, Renderer* 
       return false;
     }
 
-    // p_renderer_ = new Renderer();
-    // p_renderer_ = new TriangleRenderer();
-    // p_renderer_ = new DynTriangleRenderer(vert_count);
-    // p_renderer_ = new QuadRenderer();
-    // p_renderer_ = new DepthQuadRenderer();
-    // p_renderer_ = new WorldRenderer();
-
     // Call Renderer Methods to CreatePipelineState and LoadResources
     // In case of errors, use Error Logging and return false
     if (!p_renderer_->CreatePipelineState(m_device_, width, height)) {
