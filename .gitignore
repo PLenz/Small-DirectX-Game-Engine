@@ -1,6 +1,6 @@
 .vs
 Debug
 Release
-*.blend1
+models/*.blend
 *.mtl
 *.sln.DotSettings.user
