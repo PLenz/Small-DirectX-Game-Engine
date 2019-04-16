@@ -56,3 +56,9 @@ This is a DirectX application with some basic Game engine features.
 
 ## Renderer
 ![Renderer](screenshots/Renderer.PNG?raw=true "Renderer")
+
+## Copyright
+Models: (Barrier, Floor, Wall) by Tobias Reimann<br/>
+Textures: (Bake_Barrier, Bake_Floor, Bake_Wall) by Tobias Reimann<br/>
+TextureLoader by [braynzarsoft.net](https://www.braynzarsoft.net/viewtutorial/q16390-directx-12-textures-from-file)<br/>
+dxdx12.h: Microsoft [Github Microsoft/DirectX-Graphics-Samples](https://github.com/Microsoft/DirectX-Graphics-Samples/blob/master/Libraries/D3DX12/d3dx12.h)
